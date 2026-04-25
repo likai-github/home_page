@@ -6,7 +6,7 @@
         <div class="hero-text">
           <h1 class="hero-title">
             <span class="greeting">Hello, I'm</span>
-            <span class="name">Your Name</span>
+            <span class="name">GAOYING</span>
           </h1>
           <p class="hero-subtitle">创造者 · 开发者 · 设计师</p>
           <p class="hero-description">
