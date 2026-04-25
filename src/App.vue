@@ -3,7 +3,7 @@
     <header class="header">
       <nav class="nav-container">
         <div class="logo">
-          <h1>MY SITE</h1>
+          <h1>gaoying的网站</h1>
         </div>
         <ul class="nav-menu">
           <li v-for="item in menuItems" :key="item.path" 
