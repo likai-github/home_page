@@ -1,0 +1,25 @@
+import { createApp } from 'vue'
+import { createRouter, createWebHistory } from 'vue-router'
+import App from './App.vue'
+import Home from './views/Home.vue'
+import './style.css'
+
+const routes = [
+  {
+    path: '/',
+    name: 'Home',
+    component: Home
+  }
+  // 后续可以在这里添加更多路由
+  // { path: '/about', name: 'About', component: () => import('./views/About.vue') },
+  // { path: '/projects', name: 'Projects', component: () => import('./views/Projects.vue') },
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+})
+
+const app = createApp(App)
+app.use(router)
+app.mount('#app')
