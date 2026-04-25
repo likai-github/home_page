@@ -4,8 +4,11 @@ compatibility_date = "2024-01-01"
 # 使用 Cloudflare Pages 部署 Vue 应用
 pages_build_output_dir = "dist"
 
-[site]
-bucket = "./dist"
+# D1 数据库绑定
+[[d1_databases]]
+binding = "DB"  # 在代码中通过 env.DB 访问
+database_name = "personal-website-db"
+database_id = ""  # 创建数据库后填入 ID
 
 # 环境变量（如果需要）
 [vars]

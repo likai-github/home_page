@@ -9,6 +9,11 @@ const routes = [
     path: '/',
     name: 'Home',
     component: Home
+  },
+  {
+    path: '/blog',
+    name: 'Blog',
+    component: () => import('./views/Blog.vue')
   }
   // 后续可以在这里添加更多路由
   // { path: '/about', name: 'About', component: () => import('./views/About.vue') },

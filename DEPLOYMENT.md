@@ -20,14 +20,28 @@
    ```
    这会打开浏览器，让你授权 Wrangler 访问你的 Cloudflare 账号。
 
-3. **构建并部署**
+3. **设置数据库（如果需要）**
+   
+   如果你的网站需要数据库功能，请先设置 D1 数据库：
+   ```bash
+   # 创建数据库
+   npx wrangler d1 create personal-website-db
+   
+   # 将输出的 database_id 复制到 wrangler.toml 文件中
+   # 然后初始化数据库表
+   npx wrangler d1 execute personal-website-db --file=./schema.sql
+   ```
+   
+   详细步骤请查看 [DATABASE_SETUP.md](./DATABASE_SETUP.md)
+
+4. **构建并部署**
    ```bash
    npm run deploy
    ```
    
    首次部署时，Wrangler 会提示你创建一个新的 Pages 项目。
 
-4. **访问网站**
+5. **访问网站**
    部署成功后，Wrangler 会显示你的网站 URL，格式类似：
    ```
    https://personal-website-xxx.pages.dev
@@ -140,8 +154,25 @@ npx wrangler pages deployments list
 npx wrangler pages project list
 ```
 
+## 数据库功能
+
+本项目已集成 Cloudflare D1 数据库支持。如果你需要使用数据库功能：
+
+1. 查看 [DATABASE_SETUP.md](./DATABASE_SETUP.md) 了解详细设置步骤
+2. API 端点会自动部署为 Cloudflare Workers
+3. 前端可以通过 `/api/*` 路径访问后端 API
+
+已配置的功能：
+- ✅ RESTful API（自动部署为 Workers）
+- ✅ D1 SQLite 数据库
+- ✅ 用户、文章、项目、评论表
+- ✅ CORS 跨域支持
+- ✅ 示例 Blog 页面
+
 ## 更多资源
 
 - [Cloudflare Pages 文档](https://developers.cloudflare.com/pages/)
+- [Cloudflare D1 数据库文档](https://developers.cloudflare.com/d1/)
+- [Pages Functions 文档](https://developers.cloudflare.com/pages/platform/functions/)
 - [Wrangler CLI 文档](https://developers.cloudflare.com/workers/wrangler/)
 - [Vue Router 部署指南](https://router.vuejs.org/guide/essentials/history-mode.html)
