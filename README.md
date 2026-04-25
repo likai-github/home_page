@@ -87,4 +87,15 @@ const routes = [
 4. **特色卡片**：修改 features 数组的内容
 5. **Logo**：替换 App.vue 中的 "MY SITE" 文字
 
+## 部署
+
+本项目已配置好 Cloudflare Pages 部署。详细部署步骤请查看 [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+快速部署：
+```bash
+npm install
+npx wrangler login
+npm run deploy
+```
+
 祝你使用愉快！🎉

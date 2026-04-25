@@ -1,0 +1,12 @@
+name = "personal-website"
+compatibility_date = "2024-01-01"
+
+# 使用 Cloudflare Pages 部署 Vue 应用
+pages_build_output_dir = "dist"
+
+[site]
+bucket = "./dist"
+
+# 环境变量（如果需要）
+[vars]
+# ENVIRONMENT = "production"
