@@ -7,7 +7,7 @@ pages_build_output_dir = "dist"
 # D1 数据库绑定
 [[d1_databases]]
 binding = "DB"  # 在代码中通过 env.DB 访问
-database_name = "personal-website-db"
+database_name = "home-page"
 database_id = "2146aa05-b525-45e8-b9c0-70f075295112"
 
 # 环境变量（如果需要）
