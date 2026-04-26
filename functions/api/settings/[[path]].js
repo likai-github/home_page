@@ -2,7 +2,14 @@
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const path = url.pathname.replace('/api/settings/', '').replace(/\/$/, '');
+  
+  // 正确处理路径：移除 /api/settings 前缀
+  let path = url.pathname;
+  if (path.startsWith('/api/settings')) {
+    path = path.substring('/api/settings'.length);
+  }
+  // 移除开头和结尾的斜杠
+  path = path.replace(/^\/+|\/+$/g, '');
 
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -16,14 +23,14 @@ export async function onRequest(context) {
 
   try {
     // GET /api/settings 或 GET /api/settings/
-    if ((path === '' || path === 'settings') && request.method === 'GET') {
-      return handleGetSettings(request, env, corsHeaders);
+    if (path === '' && request.method === 'GET') {
+      return handleGetSettings(env, corsHeaders);
     } 
     // POST /api/settings 或 POST /api/settings/
-    else if ((path === '' || path === 'settings') && request.method === 'POST') {
+    else if (path === '' && request.method === 'POST') {
       return handleSaveSettings(request, env, corsHeaders);
     } else {
-      return jsonResponse({ error: 'Not Found', path, method: request.method }, 404, corsHeaders);
+      return jsonResponse({ error: 'Not Found', path, method: request.method, url: url.pathname }, 404, corsHeaders);
     }
   } catch (error) {
     console.error('Settings API Error:', error);
@@ -31,7 +38,7 @@ export async function onRequest(context) {
   }
 }
 
-async function handleGetSettings(request, env, corsHeaders) {
+async function handleGetSettings(env, corsHeaders) {
   if (!env.DB) {
     return jsonResponse({ error: 'Database not configured' }, 503, corsHeaders);
   }
