@@ -1,543 +1,395 @@
 <template>
-  <div class="admin-page">
-    <div class="admin-header">
-      <h1>NVIDIA API 管理后台</h1>
-      <div class="user-info">
-        <span>欢迎，{{ username }}</span>
-        <button @click="logout" class="btn-logout">退出登录</button>
-      </div>
-    </div>
-
-    <div class="admin-container">
-      <!-- API 配置区域 -->
-      <div class="section">
-        <h2>API 配置</h2>
-        <div class="api-config">
-          <div class="form-group">
-            <label>NVIDIA API Key</label>
-            <div class="input-with-button">
-              <input 
-                v-model="apiKey" 
-                :type="showKey ? 'text' : 'password'"
-                placeholder="请输入 NVIDIA API Key"
-              />
-              <button @click="showKey = !showKey" class="btn-toggle-key">
-                {{ showKey ? '隐藏' : '显示' }}
-              </button>
-            </div>
-          </div>
-          <button @click="saveApiKey" class="btn-save" :disabled="saving">
-            {{ saving ? '保存中...' : '保存配置' }}
-          </button>
-        </div>
+  <div class="admin-layout">
+    <!-- 侧边栏 -->
+    <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
+      <div class="sidebar-header">
+        <h2 v-if="!sidebarCollapsed">管理后台</h2>
+        <button @click="toggleSidebar" class="btn-toggle-sidebar">
+          {{ sidebarCollapsed ? '☰' : '✕' }}
+        </button>
       </div>
 
-      <!-- 可用模型列表 -->
-      <div class="section">
-        <div class="section-header">
-          <h2>可用模型列表</h2>
-          <button @click="fetchModels" class="btn-refresh" :disabled="loading">
-            {{ loading ? '加载中...' : '刷新列表' }}
-          </button>
-        </div>
+      <nav class="sidebar-nav">
+        <a 
+          v-for="item in menuItems" 
+          :key="item.id"
+          @click="currentView = item.id"
+          :class="{ active: currentView === item.id }"
+          class="nav-item"
+        >
+          <span class="nav-icon">{{ item.icon }}</span>
+          <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
+        </a>
+      </nav>
 
-        <div v-if="error" class="error-message">{{ error }}</div>
-        <div v-if="success" class="success-message">{{ success }}</div>
-
-        <div v-if="loading" class="loading">
-          <p>正在加载模型列表...</p>
-        </div>
-
-        <div v-else-if="models.length > 0" class="models-grid">
-          <div 
-            v-for="model in models" 
-            :key="model.id" 
-            class="model-card"
-            :class="{ 'model-enabled': model.enabled }"
-          >
-            <div class="model-header">
-              <h3>{{ model.id }}</h3>
-              <label class="switch">
-                <input 
-                  type="checkbox" 
-                  v-model="model.enabled"
-                  @change="toggleModel(model)"
-                />
-                <span class="slider"></span>
-              </label>
-            </div>
-            <div class="model-info">
-              <p v-if="model.description" class="model-description">
-                {{ model.description }}
-              </p>
-              <div class="model-meta">
-                <span v-if="model.owned_by" class="meta-item">
-                  <strong>提供商:</strong> {{ model.owned_by }}
-                </span>
-                <span v-if="model.created" class="meta-item">
-                  <strong>创建时间:</strong> {{ formatDate(model.created) }}
-                </span>
-              </div>
-            </div>
+      <div class="sidebar-footer">
+        <div v-if="!sidebarCollapsed" class="user-info">
+          <div class="user-avatar">{{ username.charAt(0).toUpperCase() }}</div>
+          <div class="user-details">
+            <div class="user-name">{{ username }}</div>
+            <div class="user-role">{{ isAdmin ? '管理员' : '用户' }}</div>
           </div>
         </div>
+        <button @click="logout" class="btn-logout" :title="sidebarCollapsed ? '退出登录' : ''">
+          <span class="nav-icon">🚪</span>
+          <span v-if="!sidebarCollapsed">退出登录</span>
+        </button>
+      </div>
+    </aside>
 
-        <div v-else-if="!loading" class="empty-state">
-          <p>暂无可用模型</p>
-          <p class="hint">请先配置 API Key 并点击刷新</p>
+    <!-- 主内容区 -->
+    <main class="main-content">
+      <!-- 顶部栏 -->
+      <header class="content-header">
+        <h1>{{ currentViewTitle }}</h1>
+        <div class="header-actions">
+          <span class="current-time">{{ currentTime }}</span>
+        </div>
+      </header>
+
+      <!-- 内容区域 -->
+      <div class="content-body">
+        <!-- 仪表盘 -->
+        <div v-if="currentView === 'dashboard'" class="view-container">
+          <DashboardView :stats="dashboardStats" />
+        </div>
+
+        <!-- API 管理 -->
+        <div v-if="currentView === 'api'" class="view-container">
+          <ApiManagement />
+        </div>
+
+        <!-- 账号管理 -->
+        <div v-if="currentView === 'accounts'" class="view-container">
+          <AccountManagement :is-admin="isAdmin" />
+        </div>
+
+        <!-- 系统设置 -->
+        <div v-if="currentView === 'settings'" class="view-container">
+          <SystemSettings :is-admin="isAdmin" />
         </div>
       </div>
-
-      <!-- 已启用模型统计 -->
-      <div class="section stats">
-        <h2>统计信息</h2>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-number">{{ models.length }}</div>
-            <div class="stat-label">总模型数</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number">{{ enabledModelsCount }}</div>
-            <div class="stat-label">已启用</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number">{{ models.length - enabledModelsCount }}</div>
-            <div class="stat-label">未启用</div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '../api';
+import DashboardView from '../components/admin/DashboardView.vue';
+import ApiManagement from '../components/admin/ApiManagement.vue';
+import AccountManagement from '../components/admin/AccountManagement.vue';
+import SystemSettings from '../components/admin/SystemSettings.vue';
 
 const router = useRouter();
 const username = ref(localStorage.getItem('username') || '用户');
-const apiKey = ref('');
-const showKey = ref(false);
-const models = ref([]);
-const loading = ref(false);
-const saving = ref(false);
-const error = ref('');
-const success = ref('');
-
-const enabledModelsCount = computed(() => {
-  return models.value.filter(m => m.enabled).length;
+const isAdmin = ref(localStorage.getItem('isAdmin') === 'true');
+const sidebarCollapsed = ref(false);
+const currentView = ref('dashboard');
+const currentTime = ref('');
+const dashboardStats = ref({
+  totalUsers: 0,
+  enabledModels: 0,
+  apiCalls: 0,
+  systemStatus: 'running'
 });
+
+const menuItems = [
+  { id: 'dashboard', label: '仪表盘', icon: '📊' },
+  { id: 'api', label: 'API 管理', icon: '🔌' },
+  { id: 'accounts', label: '账号管理', icon: '👥' },
+  { id: 'settings', label: '系统设置', icon: '⚙️' },
+];
+
+const currentViewTitle = computed(() => {
+  const item = menuItems.find(m => m.id === currentView.value);
+  return item ? item.label : '';
+});
+
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+};
 
 const logout = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('username');
+  localStorage.removeItem('isAdmin');
   router.push('/login');
 };
 
-const saveApiKey = async () => {
-  if (!apiKey.value.trim()) {
-    error.value = '请输入 API Key';
-    return;
-  }
-
-  saving.value = true;
-  error.value = '';
-  success.value = '';
-
-  try {
-    await api.saveNvidiaApiKey(apiKey.value);
-    success.value = 'API Key 保存成功！';
-    setTimeout(() => {
-      success.value = '';
-    }, 3000);
-  } catch (err) {
-    error.value = err.message || '保存失败';
-  } finally {
-    saving.value = false;
-  }
+const updateTime = () => {
+  const now = new Date();
+  currentTime.value = now.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
 };
 
-const fetchModels = async () => {
-  if (!apiKey.value.trim()) {
-    error.value = '请先配置 API Key';
-    return;
-  }
-
-  loading.value = true;
-  error.value = '';
-  success.value = '';
-
-  try {
-    const data = await api.getNvidiaModels(apiKey.value);
-    models.value = (data.data || []).map(model => ({
-      ...model,
-      enabled: false
-    }));
-    success.value = `成功加载 ${models.value.length} 个模型`;
-    setTimeout(() => {
-      success.value = '';
-    }, 3000);
-  } catch (err) {
-    error.value = err.message || '加载模型失败';
-  } finally {
-    loading.value = false;
-  }
-};
-
-const toggleModel = async (model) => {
-  try {
-    await api.toggleNvidiaModel(model.id, model.enabled);
-  } catch (err) {
-    console.error('切换模型状态失败:', err);
-    model.enabled = !model.enabled; // 回滚状态
-  }
-};
-
-const formatDate = (timestamp) => {
-  if (!timestamp) return '';
-  const date = new Date(timestamp * 1000);
-  return date.toLocaleDateString('zh-CN');
-};
+let timeInterval;
 
 onMounted(() => {
-  // 检查登录状态
   const token = localStorage.getItem('token');
   if (!token) {
     router.push('/login');
     return;
   }
 
-  // 加载保存的 API Key
-  api.getNvidiaApiKey().then(data => {
-    if (data.apiKey) {
-      apiKey.value = data.apiKey;
-    }
-  }).catch(err => {
-    console.error('加载 API Key 失败:', err);
-  });
+  updateTime();
+  timeInterval = setInterval(updateTime, 1000);
+});
+
+onUnmounted(() => {
+  if (timeInterval) {
+    clearInterval(timeInterval);
+  }
 });
 </script>
 
 <style scoped>
-.admin-page {
+.admin-layout {
+  display: flex;
   min-height: 100vh;
   background: #f5f7fa;
 }
 
-.admin-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* 侧边栏 */
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
   color: white;
-  padding: 2rem 3rem;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease;
+  position: fixed;
+  height: 100vh;
+  z-index: 1000;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar.collapsed {
+  width: 70px;
+}
+
+.sidebar-header {
+  padding: 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.admin-header h1 {
+.sidebar-header h2 {
   margin: 0;
-  font-size: 1.8rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.btn-toggle-sidebar {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.3s ease;
+}
+
+.btn-toggle-sidebar:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 1rem 0;
+  overflow-y: auto;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-left: 3px solid transparent;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.nav-item.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border-left-color: #3498db;
+}
+
+.nav-icon {
+  font-size: 1.3rem;
+  margin-right: 1rem;
+  min-width: 24px;
+  text-align: center;
+}
+
+.collapsed .nav-icon {
+  margin-right: 0;
+}
+
+.nav-label {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.sidebar-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.user-details {
+  flex: 1;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.user-role {
+  font-size: 0.75rem;
+  opacity: 0.7;
 }
 
 .btn-logout {
-  padding: 0.5rem 1.5rem;
-  background: rgba(255, 255, 255, 0.2);
+  width: 100%;
+  padding: 0.75rem;
+  background: rgba(231, 76, 60, 0.2);
+  border: 1px solid rgba(231, 76, 60, 0.3);
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   transition: all 0.3s ease;
+  font-size: 0.9rem;
 }
 
 .btn-logout:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(231, 76, 60, 0.3);
 }
 
-.admin-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 2rem 3rem;
-}
-
-.section {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.section h2 {
-  margin: 0 0 1.5rem 0;
-  color: #333;
-  font-size: 1.5rem;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.section-header h2 {
-  margin: 0;
-}
-
-.api-config {
-  max-width: 600px;
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #333;
-  font-weight: 500;
-}
-
-.input-with-button {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.form-group input {
+/* 主内容区 */
+.main-content {
   flex: 1;
-  padding: 0.75rem 1rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.3s ease;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.btn-toggle-key {
-  padding: 0.75rem 1.5rem;
-  background: #f0f0f0;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.3s ease;
-}
-
-.btn-toggle-key:hover {
-  background: #e0e0e0;
-}
-
-.btn-save, .btn-refresh {
-  padding: 0.75rem 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.btn-save:hover:not(:disabled), 
-.btn-refresh:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.btn-save:disabled, 
-.btn-refresh:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.error-message {
-  padding: 1rem;
-  background: #fee;
-  color: #c33;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-}
-
-.success-message {
-  padding: 1rem;
-  background: #efe;
-  color: #3c3;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-}
-
-.loading {
-  text-align: center;
-  padding: 3rem;
-  color: #666;
-}
-
-.models-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 1.5rem;
-}
-
-.model-card {
-  border: 2px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 1.5rem;
-  transition: all 0.3s ease;
-}
-
-.model-card:hover {
-  border-color: #667eea;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
-}
-
-.model-card.model-enabled {
-  border-color: #4caf50;
-  background: #f1f8f4;
-}
-
-.model-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.model-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #333;
-  word-break: break-word;
-}
-
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 26px;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: 0.4s;
-  border-radius: 26px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 20px;
-  width: 20px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: 0.4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: #4caf50;
-}
-
-input:checked + .slider:before {
-  transform: translateX(24px);
-}
-
-.model-info {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.model-description {
-  margin-bottom: 0.75rem;
-  line-height: 1.5;
-}
-
-.model-meta {
+  margin-left: 260px;
+  transition: margin-left 0.3s ease;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
 }
 
-.meta-item {
-  font-size: 0.85rem;
+.sidebar.collapsed ~ .main-content {
+  margin-left: 70px;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: #999;
+.content-header {
+  background: white;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
-.empty-state .hint {
-  margin-top: 0.5rem;
+.content-header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: #2c3e50;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.current-time {
+  color: #7f8c8d;
   font-size: 0.9rem;
+  font-family: monospace;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-}
-
-.stat-card {
-  text-align: center;
+.content-body {
+  flex: 1;
   padding: 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 12px;
+  overflow-y: auto;
 }
 
-.stat-number {
-  font-size: 3rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
+.view-container {
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-.stat-label {
-  font-size: 1rem;
-  opacity: 0.9;
-}
-
+/* 响应式 */
 @media (max-width: 768px) {
-  .admin-header {
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1.5rem;
+  .sidebar {
+    width: 70px;
   }
 
-  .admin-container {
+  .sidebar-header h2,
+  .nav-label,
+  .user-info,
+  .btn-logout span:not(.nav-icon) {
+    display: none;
+  }
+
+  .main-content {
+    margin-left: 70px;
+  }
+
+  .content-header {
     padding: 1rem;
   }
 
-  .models-grid {
-    grid-template-columns: 1fr;
+  .content-header h1 {
+    font-size: 1.3rem;
   }
 
-  .stats-grid {
-    grid-template-columns: 1fr;
+  .content-body {
+    padding: 1rem;
   }
 }
 </style>

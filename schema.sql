@@ -50,6 +50,20 @@ CREATE TABLE IF NOT EXISTS comments (
   FOREIGN KEY (post_id) REFERENCES posts(id)
 );
 
+-- 配置表（存储 API Key 等配置）
+CREATE TABLE IF NOT EXISTS config (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- NVIDIA 模型配置表
+CREATE TABLE IF NOT EXISTS nvidia_models (
+  model_id TEXT PRIMARY KEY,
+  enabled BOOLEAN DEFAULT 0,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author_id);
 CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC);

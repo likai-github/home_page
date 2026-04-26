@@ -112,6 +112,18 @@ class ApiClient {
   async getProjects() {
     return this.request('/projects');
   }
+
+  // 系统设置
+  async getSystemSettings() {
+    return this.request('/settings');
+  }
+
+  async saveSystemSettings(settings) {
+    return this.request('/settings', {
+      method: 'POST',
+      body: JSON.stringify(settings),
+    });
+  }
 }
 
 export const api = new ApiClient();
