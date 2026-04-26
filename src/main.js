@@ -56,7 +56,12 @@ router.beforeEach((to, _from, next) => {
       next()
     }
   } else {
-    next()
+    // 已登录时访问 /login，直接跳到后台或首页
+    if (to.path === '/login' && authState.token) {
+      next(authState.isAdmin ? '/admin' : '/')
+    } else {
+      next()
+    }
   }
 })
 

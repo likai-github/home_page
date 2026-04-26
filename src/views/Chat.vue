@@ -167,6 +167,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../api';
+import { authState } from '../main.js';
 
 const router = useRouter();
 
@@ -180,7 +181,7 @@ const isLoading        = ref(false);
 const streamingText    = ref('');
 const selectedModel    = ref('');
 const availablePlatforms = ref([]);
-const isLoggedIn       = ref(!!localStorage.getItem('token'));
+const isLoggedIn = computed(() => !!authState.token);
 const messagesContainer = ref(null);
 const textareaRef      = ref(null);
 
@@ -211,33 +212,34 @@ onMounted(async () => {
 const loadAvailableModels = async () => {
   try {
     const data = await api.getPlatforms();
-    const platforms = data.platforms || [];
+    const platforms = (data.platforms || []).filter(p => p.status === 'active');
 
-    for (const p of platforms) {
-      if (p.status === 'active') {
-        try {
-          const md = await api.getPlatformModels(p.id);
-          // SQLite 返回 0/1 整数，需显式转换为布尔值
-          p.models = (md.models || []).filter(m => m.enabled == 1 || m.enabled === true);
-        } catch {
-          p.models = [];
-        }
-      } else {
+    if (platforms.length === 0) return;
+
+    // 并行加载所有平台的模型，互不影响
+    await Promise.all(platforms.map(async (p) => {
+      try {
+        const md = await api.getPlatformModels(p.id);
+        // SQLite 返回 0/1 整数，用 == 宽松比较
+        p.models = (md.models || []).filter(m => m.enabled == 1 || m.enabled === true);
+      } catch (err) {
+        console.warn(`平台 ${p.display_name} 模型加载失败:`, err.message);
         p.models = [];
       }
-    }
+    }));
 
+    // 只保留有已启用模型的平台
     availablePlatforms.value = platforms.filter(p => p.models && p.models.length > 0);
+
+    console.log('可用平台:', availablePlatforms.value.map(p => `${p.display_name}(${p.models.length}个模型)`));
 
     // 自动选第一个可用模型
     if (availablePlatforms.value.length > 0) {
       const fp = availablePlatforms.value[0];
-      if (fp.models.length > 0) {
-        selectedModel.value = `${fp.id}:${fp.models[0].model_id}`;
-      }
+      selectedModel.value = `${fp.id}:${fp.models[0].model_id}`;
     }
   } catch (err) {
-    console.error('加载模型失败:', err);
+    console.error('加载平台列表失败:', err.message);
   }
 };
 

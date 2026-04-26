@@ -3,25 +3,33 @@ import { runMigrations } from '../db/migrations.js';
 
 let migrationsExecuted = false;
 
-// 需要登录才能访问的路径前缀（公开接口不在此列）
+// ── 公开接口（无需 token）────────────────────────────────────────────────────
+// Chat 页面需要读取平台列表和模型列表，不要求登录
+const PUBLIC_PATTERNS = [
+  // 认证
+  { method: 'POST', prefix: '/api/auth/' },
+  // 读取平台列表 & 单个平台（GET）
+  { method: 'GET',  prefix: '/api/platforms' },
+  // 读取模型列表（GET /api/platforms/:id/models）已被上面覆盖
+];
+
+// ── 需要 token 的接口 ─────────────────────────────────────────────────────────
+// 写操作（POST/PUT/DELETE）平台、设置、数据库、用户、AI 对话
 const PROTECTED_PREFIXES = [
-  '/api/platforms',
   '/api/settings',
   '/api/database',
   '/api/users',
   '/api/chat',
 ];
 
-// 完全公开的路径（无需 token）
-const PUBLIC_PATHS = [
-  '/api/auth/login',
-  '/api/auth/register',
-];
+// 平台的写操作也需要 token
+const PROTECTED_PLATFORM_METHODS = ['POST', 'PUT', 'DELETE'];
 
 export async function onRequest(context) {
   const { request, env, next } = context;
   const url = new URL(request.url);
   const pathname = url.pathname;
+  const method = request.method;
 
   // 自动迁移（只执行一次）
   if (!migrationsExecuted && env.DB) {
@@ -34,40 +42,42 @@ export async function onRequest(context) {
   }
 
   // OPTIONS 预检直接放行
-  if (request.method === 'OPTIONS') {
+  if (method === 'OPTIONS') {
     return next();
   }
 
-  // 公开路径直接放行
-  if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
-    return next();
-  }
+  // 判断是否需要鉴权
+  const needsAuth = (() => {
+    // 明确受保护的前缀
+    if (PROTECTED_PREFIXES.some(p => pathname.startsWith(p))) return true;
+    // 平台的写操作
+    if (pathname.startsWith('/api/platforms') && PROTECTED_PLATFORM_METHODS.includes(method)) return true;
+    return false;
+  })();
 
-  // 受保护路径：验证 token
-  if (PROTECTED_PREFIXES.some(p => pathname.startsWith(p))) {
+  if (needsAuth) {
     const authHeader = request.headers.get('Authorization') || '';
     const token = authHeader.replace('Bearer ', '').trim();
 
     if (!token) {
-      return new Response(JSON.stringify({ error: 'Unauthorized', message: '请先登录' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized', message: '请先登录' }),
+        { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      );
     }
 
-    // 验证 token 是否在数据库中存在且未过期
     if (env.DB) {
       try {
         const valid = await verifyToken(env.DB, token);
         if (!valid) {
-          return new Response(JSON.stringify({ error: 'Unauthorized', message: 'Token 无效或已过期，请重新登录' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          });
+          return new Response(
+            JSON.stringify({ error: 'Unauthorized', message: 'Token 无效或已过期，请重新登录' }),
+            { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+          );
         }
       } catch (e) {
-        console.error('Token 验证失败:', e);
-        // 验证出错时放行（避免数据库问题导致所有请求失败）
+        console.error('Token 验证出错:', e);
+        // 验证出错时放行，避免数据库问题误拦截
       }
     }
   }
@@ -75,7 +85,7 @@ export async function onRequest(context) {
   return next();
 }
 
-// 遍历所有 token_* 记录，找到匹配且未过期的
+// 遍历 config 表中所有 token_* 记录，找到匹配且未过期的
 async function verifyToken(db, token) {
   try {
     const { results } = await db.prepare(
@@ -85,16 +95,13 @@ async function verifyToken(db, token) {
     for (const row of results) {
       try {
         const data = JSON.parse(row.value);
-        if (data.token === token) {
-          // 检查是否过期
-          if (new Date(data.expiresAt) > new Date()) {
-            return true;
-          }
+        if (data.token === token && new Date(data.expiresAt) > new Date()) {
+          return true;
         }
       } catch {}
     }
     return false;
   } catch {
-    return true; // 查询失败时放行，避免误拦截
+    return true; // 查询失败时放行
   }
 }

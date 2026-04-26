@@ -21,15 +21,17 @@
             <router-link to="/login">登录</router-link>
           </li>
 
-          <!-- 已登录：显示后台 + 退出 -->
+          <!-- 已登录：显示后台 + 用户信息 + 退出 -->
           <template v-else>
             <li v-if="auth.isAdmin" :class="{ active: currentRoute.startsWith('/admin') }">
               <router-link to="/admin">管理后台</router-link>
             </li>
+            <li class="user-chip">
+              <span class="user-avatar-dot">{{ auth.username.charAt(0).toUpperCase() }}</span>
+              <span class="user-name-text">{{ auth.username }}</span>
+            </li>
             <li>
-              <button class="btn-logout-nav" @click="handleLogout">
-                退出 ({{ auth.username }})
-              </button>
+              <button class="btn-logout-nav" @click="handleLogout">退出</button>
             </li>
           </template>
         </ul>
@@ -141,6 +143,39 @@ const handleLogout = () => {
 .btn-logout-nav:hover {
   background: #fef2f2;
   color: #dc2626;
+}
+
+/* 已登录用户信息 */
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  background: #f0f4ff;
+  border-radius: 20px;
+  border: 1.5px solid #c7d2fe;
+}
+.user-avatar-dot {
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.user-name-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4f46e5;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .main-content {
