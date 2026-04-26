@@ -487,8 +487,8 @@ const syncModels = async () => {
     const data = await api.syncPlatformModels(selectedPlatform.value.id);
     syncSuccess.value = `✓ ${data.message} (新增: ${data.added}, 更新: ${data.updated})`;
     
-    // 重新加载模型列表
-    const modelsData = await api.getPlatformModels(selectedPlatform.value.id);
+    // 重新加载全量模型列表（管理后台需要看到所有模型，含未启用的）
+    const modelsData = await api.getAllPlatformModels(selectedPlatform.value.id);
     models.value = modelsData.models || [];
     
     // 刷新平台列表以更新统计
