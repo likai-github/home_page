@@ -7,7 +7,13 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler pages deploy dist",
-    "cf:dev": "wrangler pages dev dist"
+    "cf:dev": "wrangler pages dev dist",
+    "db:diagnose": "node diagnose-db.js",
+    "db:fix": "node fix-database.js",
+    "db:reset": "node fix-database.js --reset",
+    "db:migrate": "npx wrangler d1 execute DB --file=./manual-migration.sql",
+    "db:status": "npx wrangler d1 execute DB --command \"SELECT * FROM migrations ORDER BY version DESC LIMIT 5\"",
+    "db:tables": "npx wrangler d1 execute DB --command \"SELECT name FROM sqlite_master WHERE type='table' ORDER BY name\""
   },
   "dependencies": {
     "vue": "^3.4.0",

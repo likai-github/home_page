@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据库修复工具</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 800px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+      font-size: 2rem;
+    }
+
+    .subtitle {
+      color: #7f8c8d;
+      margin-bottom: 30px;
+      font-size: 1rem;
+    }
+
+    .status-card {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .status-item:last-child {
+      border-bottom: none;
+    }
+
+    .status-label {
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    .status-value {
+      color: #7f8c8d;
+      font-family: 'Courier New', monospace;
+    }
+
+    .status-value.success {
+      color: #27ae60;
+      font-weight: 600;
+    }
+
+    .status-value.warning {
+      color: #f39c12;
+      font-weight: 600;
+    }
+
+    .status-value.error {
+      color: #e74c3c;
+      font-weight: 600;
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 15px 25px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-success {
+      background: #27ae60;
+      color: white;
+    }
+
+    .btn-warning {
+      background: #f39c12;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #e74c3c;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #95a5a6;
+      color: white;
+    }
+
+    .log-container {
+      background: #2c3e50;
+      color: #ecf0f1;
+      border-radius: 8px;
+      padding: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 4px 0;
+    }
+
+    .log-entry.success {
+      color: #2ecc71;
+    }
+
+    .log-entry.error {
+      color: #e74c3c;
+    }
+
+    .log-entry.warning {
+      color: #f39c12;
+    }
+
+    .log-entry.info {
+      color: #3498db;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .alert {
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .alert.show {
+      display: block;
+    }
+
+    .alert.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .alert.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .alert.warning {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .table-badge {
+      background: #e8f5e9;
+      color: #2e7d32;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    .table-badge.missing {
+      background: #ffebee;
+      color: #c62828;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 数据库修复工具</h1>
+    <p class="subtitle">诊断和修复数据库问题</p>
+
+    <div id="alert" class="alert"></div>
+
+    <div class="status-card">
+      <h3 style="margin-bottom: 15px; color: #2c3e50;">📊 数据库状态</h3>
+      <div class="status-item">
+        <span class="status-label">当前版本</span>
+        <span id="currentVersion" class="status-value">-</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">最新版本</span>
+        <span id="latestVersion" class="status-value">-</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">表数量</span>
+        <span id="tableCount" class="status-value">-</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">状态</span>
+        <span id="dbStatus" class="status-value">-</span>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button id="btnCheck" class="btn-primary" onclick="checkStatus()">
+        <span>🔍</span> 检查状态
+      </button>
+      <button id="btnMigrate" class="btn-success" onclick="runMigration()">
+        <span>🚀</span> 执行迁移
+      </button>
+      <button id="btnTables" class="btn-secondary" onclick="checkTables()">
+        <span>📋</span> 查看表
+      </button>
+      <button id="btnReset" class="btn-danger" onclick="resetDatabase()">
+        <span>🗑️</span> 重置数据库
+      </button>
+    </div>
+
+    <div id="tablesContainer" style="display: none;">
+      <h3 style="margin-bottom: 10px; color: #2c3e50;">📋 数据库表</h3>
+      <div id="tablesGrid" class="tables-grid"></div>
+    </div>
+
+    <h3 style="margin: 20px 0 10px; color: #2c3e50;">📝 操作日志</h3>
+    <div id="log" class="log-container">
+      <div class="log-entry info">等待操作...</div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '/api';
+    let isProcessing = false;
+
+    function log(message, type = 'info') {
+      const logContainer = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      const timestamp = new Date().toLocaleTimeString('zh-CN');
+      entry.textContent = `[${timestamp}] ${message}`;
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function showAlert(message, type = 'info') {
+      const alert = document.getElementById('alert');
+      alert.textContent = message;
+      alert.className = `alert ${type} show`;
+      setTimeout(() => {
+        alert.classList.remove('show');
+      }, 5000);
+    }
+
+    function setButtonsDisabled(disabled) {
+      isProcessing = disabled;
+      document.querySelectorAll('button').forEach(btn => {
+        btn.disabled = disabled;
+      });
+    }
+
+    async function checkStatus() {
+      if (isProcessing) return;
+      
+      log('开始检查数据库状态...', 'info');
+      setButtonsDisabled(true);
+
+      try {
+        const response = await fetch(`${API_BASE}/database/status`);
+        const data = await response.json();
+
+        if (response.ok) {
+          document.getElementById('currentVersion').textContent = data.currentVersion;
+          document.getElementById('latestVersion').textContent = data.latestVersion;
+          document.getElementById('tableCount').textContent = data.tableCount;
+          
+          const statusEl = document.getElementById('dbStatus');
+          statusEl.textContent = data.status === 'up_to_date' ? '✅ 最新' : '⚠️ 需要更新';
+          statusEl.className = `status-value ${data.status === 'up_to_date' ? 'success' : 'warning'}`;
+
+          log('✅ 状态检查完成', 'success');
+          
+          if (data.needsUpdate) {
+            showAlert('数据库需要更新，请点击"执行迁移"按钮', 'warning');
+          } else {
+            showAlert('数据库已是最新版本', 'success');
+          }
+        } else {
+          throw new Error(data.error || '检查失败');
+        }
+      } catch (error) {
+        log(`❌ 检查失败: ${error.message}`, 'error');
+        showAlert(`检查失败: ${error.message}`, 'error');
+      } finally {
+        setButtonsDisabled(false);
+      }
+    }
+
+    async function runMigration() {
+      if (isProcessing) return;
+      
+      if (!confirm('确定要执行数据库迁移吗？')) return;
+
+      log('开始执行数据库迁移...', 'info');
+      setButtonsDisabled(true);
+
+      try {
+        const response = await fetch(`${API_BASE}/database/migrate`, {
+          method: 'POST'
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          log(`✅ 迁移成功！`, 'success');
+          log(`   从版本 ${data.previousVersion} 升级到 ${data.currentVersion}`, 'success');
+          log(`   执行了 ${data.migrationsExecuted} 个迁移`, 'success');
+          showAlert('迁移成功！数据库已更新。', 'success');
+          
+          // 自动刷新状态
+          setTimeout(() => checkStatus(), 1000);
+        } else {
+          throw new Error(data.message || data.error || '迁移失败');
+        }
+      } catch (error) {
+        log(`❌ 迁移失败: ${error.message}`, 'error');
+        showAlert(`迁移失败: ${error.message}`, 'error');
+      } finally {
+        setButtonsDisabled(false);
+      }
+    }
+
+    async function checkTables() {
+      if (isProcessing) return;
+      
+      log('获取数据库表列表...', 'info');
+      setButtonsDisabled(true);
+
+      try {
+        const response = await fetch(`${API_BASE}/database/tables`);
+        const data = await response.json();
+
+        if (response.ok) {
+          const tablesContainer = document.getElementById('tablesContainer');
+          const tablesGrid = document.getElementById('tablesGrid');
+          
+          tablesGrid.innerHTML = '';
+          
+          const requiredTables = ['config', 'api_platforms', 'api_models', 'users', 'roles', 'permissions'];
+          const existingTables = data.tables.map(t => t.name);
+          
+          data.tables.forEach(table => {
+            const badge = document.createElement('div');
+            badge.className = 'table-badge';
+            badge.textContent = `${table.name} (${table.row_count})`;
+            tablesGrid.appendChild(badge);
+          });
+
+          // 检查缺失的表
+          const missingTables = requiredTables.filter(t => !existingTables.includes(t));
+          if (missingTables.length > 0) {
+            missingTables.forEach(table => {
+              const badge = document.createElement('div');
+              badge.className = 'table-badge missing';
+              badge.textContent = `${table} ❌`;
+              tablesGrid.appendChild(badge);
+            });
+            log(`⚠️ 缺失 ${missingTables.length} 个关键表`, 'warning');
+            showAlert(`缺失关键表: ${missingTables.join(', ')}`, 'warning');
+          } else {
+            log(`✅ 找到 ${data.tables.length} 个表，所有关键表都存在`, 'success');
+            showAlert('所有关键表都存在', 'success');
+          }
+
+          tablesContainer.style.display = 'block';
+        } else {
+          throw new Error(data.error || '获取表列表失败');
+        }
+      } catch (error) {
+        log(`❌ 获取表列表失败: ${error.message}`, 'error');
+        showAlert(`获取表列表失败: ${error.message}`, 'error');
+      } finally {
+        setButtonsDisabled(false);
+      }
+    }
+
+    async function resetDatabase() {
+      if (isProcessing) return;
+      
+      if (!confirm('⚠️ 警告：这将删除所有数据！\n\n确定要重置数据库吗？此操作不可恢复！')) return;
+      if (!confirm('最后确认：真的要删除所有数据吗？')) return;
+
+      log('开始重置数据库...', 'warning');
+      setButtonsDisabled(true);
+
+      try {
+        // 1. 重置数据库
+        const resetResponse = await fetch(`${API_BASE}/database/reset`, {
+          method: 'POST'
+        });
+        const resetData = await resetResponse.json();
+
+        if (resetResponse.ok) {
+          log('✅ 数据库已重置', 'success');
+          
+          // 2. 执行迁移
+          log('开始重新创建表...', 'info');
+          const migrateResponse = await fetch(`${API_BASE}/database/migrate`, {
+            method: 'POST'
+          });
+          const migrateData = await migrateResponse.json();
+
+          if (migrateResponse.ok) {
+            log('✅ 表已重新创建', 'success');
+            showAlert('数据库已完全重建！', 'success');
+            
+            // 刷新状态
+            setTimeout(() => {
+              checkStatus();
+              checkTables();
+            }, 1000);
+          } else {
+            throw new Error(migrateData.message || '迁移失败');
+          }
+        } else {
+          throw new Error(resetData.message || '重置失败');
+        }
+      } catch (error) {
+        log(`❌ 操作失败: ${error.message}`, 'error');
+        showAlert(`操作失败: ${error.message}`, 'error');
+      } finally {
+        setButtonsDisabled(false);
+      }
+    }
+
+    // 页面加载时自动检查状态
+    window.addEventListener('load', () => {
+      log('数据库修复工具已就绪', 'info');
+      checkStatus();
+    });
+  </script>
+</body>
+</html>
