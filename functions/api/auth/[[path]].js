@@ -40,6 +40,23 @@ async function handleRegister(request, env, corsHeaders) {
     return jsonResponse({ error: 'Database not configured' }, 503, corsHeaders);
   }
 
+  // 检查注册开关（从配置表读取）
+  const registrationConfig = await env.DB.prepare(
+    'SELECT value FROM config WHERE key = ?'
+  ).bind('allow_registration').first();
+
+  // 检查是否有用户存在
+  const userCount = await env.DB.prepare(
+    'SELECT COUNT(*) as count FROM users'
+  ).first();
+
+  const isFirstUser = userCount.count === 0;
+
+  // 如果不是第一个用户，且注册已关闭，则拒绝注册
+  if (!isFirstUser && registrationConfig && registrationConfig.value === 'false') {
+    return jsonResponse({ error: 'Registration is currently disabled' }, 403, corsHeaders);
+  }
+
   // 检查用户是否已存在
   const existing = await env.DB.prepare(
     'SELECT id FROM users WHERE email = ?'
@@ -52,14 +69,19 @@ async function handleRegister(request, env, corsHeaders) {
   // 简单的密码哈希（生产环境应使用更安全的方法）
   const hashedPassword = await simpleHash(password);
 
+  // 第一个用户自动成为管理员
+  const role = isFirstUser ? 'admin' : 'user';
+  const bio = `${hashedPassword}|role:${role}`;
+
   // 创建用户
   const result = await env.DB.prepare(
     'INSERT INTO users (name, email, bio) VALUES (?, ?, ?)'
-  ).bind(username, username, hashedPassword).run();
+  ).bind(username, username, bio).run();
 
   return jsonResponse({
     message: 'User registered successfully',
-    userId: result.meta.last_row_id
+    userId: result.meta.last_row_id,
+    isAdmin: isFirstUser
   }, 201, corsHeaders);
 }
 
@@ -84,9 +106,15 @@ async function handleLogin(request, env, corsHeaders) {
     return jsonResponse({ error: 'Invalid credentials' }, 401, corsHeaders);
   }
 
-  // 验证密码（简化版本）
+  // 解析 bio 字段（格式：hashedPassword|role:admin）
+  const bioparts = user.bio.split('|');
+  const storedHash = bioparts[0];
+  const roleInfo = bioparts[1] || 'role:user';
+  const role = roleInfo.split(':')[1] || 'user';
+
+  // 验证密码
   const hashedPassword = await simpleHash(password);
-  if (user.bio !== hashedPassword) {
+  if (storedHash !== hashedPassword) {
     return jsonResponse({ error: 'Invalid credentials' }, 401, corsHeaders);
   }
 
@@ -97,7 +125,8 @@ async function handleLogin(request, env, corsHeaders) {
     token,
     user: {
       id: user.id,
-      username: user.name
+      username: user.name,
+      isAdmin: role === 'admin'
     }
   }, 200, corsHeaders);
 }

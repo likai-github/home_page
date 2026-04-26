@@ -95,27 +95,35 @@ const handleSubmit = async () => {
 
   try {
     if (isRegister.value) {
-      await api.register({
+      const data = await api.register({
         username: form.value.username,
         password: form.value.password
       });
-      success.value = '注册成功！正在跳转...';
+      
+      if (data.isAdmin) {
+        success.value = '🎉 注册成功！您是第一个用户，已自动设为管理员。正在跳转...';
+      } else {
+        success.value = '✓ 注册成功！正在跳转...';
+      }
+      
       setTimeout(() => {
         isRegister.value = false;
         form.value = { username: '', password: '', confirmPassword: '' };
         success.value = '';
-      }, 1500);
+      }, 2000);
     } else {
       const data = await api.login({
         username: form.value.username,
         password: form.value.password
       });
       
-      // 保存 token
+      // 保存 token 和用户信息
       localStorage.setItem('token', data.token);
-      localStorage.setItem('username', form.value.username);
+      localStorage.setItem('username', data.user.username);
+      localStorage.setItem('userId', data.user.id);
+      localStorage.setItem('isAdmin', data.user.isAdmin ? 'true' : 'false');
       
-      success.value = '登录成功！';
+      success.value = data.user.isAdmin ? '✓ 管理员登录成功！' : '✓ 登录成功！';
       setTimeout(() => {
         router.push('/admin');
       }, 1000);
