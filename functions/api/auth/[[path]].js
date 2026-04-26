@@ -29,106 +29,144 @@ export async function onRequest(context) {
 }
 
 async function handleRegister(request, env, corsHeaders) {
-  const body = await request.json();
-  const { username, password } = body;
+  try {
+    const body = await request.json();
+    const { username, password } = body;
 
-  if (!username || !password) {
-    return jsonResponse({ error: 'Username and password are required' }, 400, corsHeaders);
+    if (!username || !password) {
+      return jsonResponse({ error: 'Username and password are required' }, 400, corsHeaders);
+    }
+
+    if (!env.DB) {
+      return jsonResponse({ error: 'Database not configured' }, 503, corsHeaders);
+    }
+
+    // 检查注册开关（从配置表读取）
+    try {
+      const registrationConfig = await env.DB.prepare(
+        'SELECT value FROM config WHERE key = ?'
+      ).bind('allow_registration').first();
+
+      // 检查是否有用户存在
+      const userCount = await env.DB.prepare(
+        'SELECT COUNT(*) as count FROM users'
+      ).first();
+
+      const isFirstUser = userCount.count === 0;
+
+      // 如果不是第一个用户，且注册已关闭，则拒绝注册
+      if (!isFirstUser && registrationConfig && registrationConfig.value === 'false') {
+        return jsonResponse({ error: 'Registration is currently disabled' }, 403, corsHeaders);
+      }
+
+      // 检查用户是否已存在
+      const existing = await env.DB.prepare(
+        'SELECT id FROM users WHERE username = ? OR email = ?'
+      ).bind(username, username).first();
+
+      if (existing) {
+        return jsonResponse({ error: 'User already exists' }, 400, corsHeaders);
+      }
+
+      // 简单的密码哈希
+      const hashedPassword = await simpleHash(password);
+
+      // 创建用户（使用新的表结构）
+      const result = await env.DB.prepare(
+        'INSERT INTO users (username, email, password_hash, status) VALUES (?, ?, ?, ?)'
+      ).bind(username, username, hashedPassword, 'active').run();
+
+      // 为第一个用户分配超级管理员角色
+      if (isFirstUser) {
+        await env.DB.prepare(
+          'INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)'
+        ).bind(result.meta.last_row_id, 1).run(); // role_id = 1 是超级管理员
+      } else {
+        // 其他用户分配普通用户角色
+        await env.DB.prepare(
+          'INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)'
+        ).bind(result.meta.last_row_id, 4).run(); // role_id = 4 是普通用户
+      }
+
+      return jsonResponse({
+        message: 'User registered successfully',
+        userId: result.meta.last_row_id,
+        isAdmin: isFirstUser
+      }, 201, corsHeaders);
+
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+      return jsonResponse({ 
+        error: 'Database error', 
+        message: dbError.message 
+      }, 500, corsHeaders);
+    }
+  } catch (error) {
+    console.error('Register error:', error);
+    return jsonResponse({ 
+      error: 'Registration failed', 
+      message: error.message 
+    }, 500, corsHeaders);
   }
-
-  if (!env.DB) {
-    return jsonResponse({ error: 'Database not configured' }, 503, corsHeaders);
-  }
-
-  // 检查注册开关（从配置表读取）
-  const registrationConfig = await env.DB.prepare(
-    'SELECT value FROM config WHERE key = ?'
-  ).bind('allow_registration').first();
-
-  // 检查是否有用户存在
-  const userCount = await env.DB.prepare(
-    'SELECT COUNT(*) as count FROM users'
-  ).first();
-
-  const isFirstUser = userCount.count === 0;
-
-  // 如果不是第一个用户，且注册已关闭，则拒绝注册
-  if (!isFirstUser && registrationConfig && registrationConfig.value === 'false') {
-    return jsonResponse({ error: 'Registration is currently disabled' }, 403, corsHeaders);
-  }
-
-  // 检查用户是否已存在
-  const existing = await env.DB.prepare(
-    'SELECT id FROM users WHERE email = ?'
-  ).bind(username).first();
-
-  if (existing) {
-    return jsonResponse({ error: 'User already exists' }, 400, corsHeaders);
-  }
-
-  // 简单的密码哈希（生产环境应使用更安全的方法）
-  const hashedPassword = await simpleHash(password);
-
-  // 第一个用户自动成为管理员
-  const role = isFirstUser ? 'admin' : 'user';
-  const bio = `${hashedPassword}|role:${role}`;
-
-  // 创建用户
-  const result = await env.DB.prepare(
-    'INSERT INTO users (name, email, bio) VALUES (?, ?, ?)'
-  ).bind(username, username, bio).run();
-
-  return jsonResponse({
-    message: 'User registered successfully',
-    userId: result.meta.last_row_id,
-    isAdmin: isFirstUser
-  }, 201, corsHeaders);
 }
 
 async function handleLogin(request, env, corsHeaders) {
-  const body = await request.json();
-  const { username, password } = body;
+  try {
+    const body = await request.json();
+    const { username, password } = body;
 
-  if (!username || !password) {
-    return jsonResponse({ error: 'Username and password are required' }, 400, corsHeaders);
-  }
-
-  if (!env.DB) {
-    return jsonResponse({ error: 'Database not configured' }, 503, corsHeaders);
-  }
-
-  // 查找用户
-  const user = await env.DB.prepare(
-    'SELECT id, name, bio FROM users WHERE email = ?'
-  ).bind(username).first();
-
-  if (!user) {
-    return jsonResponse({ error: 'Invalid credentials' }, 401, corsHeaders);
-  }
-
-  // 解析 bio 字段（格式：hashedPassword|role:admin）
-  const bioparts = user.bio.split('|');
-  const storedHash = bioparts[0];
-  const roleInfo = bioparts[1] || 'role:user';
-  const role = roleInfo.split(':')[1] || 'user';
-
-  // 验证密码
-  const hashedPassword = await simpleHash(password);
-  if (storedHash !== hashedPassword) {
-    return jsonResponse({ error: 'Invalid credentials' }, 401, corsHeaders);
-  }
-
-  // 生成简单的 token（生产环境应使用 JWT）
-  const token = await generateToken(user.id);
-
-  return jsonResponse({
-    token,
-    user: {
-      id: user.id,
-      username: user.name,
-      isAdmin: role === 'admin'
+    if (!username || !password) {
+      return jsonResponse({ error: 'Username and password are required' }, 400, corsHeaders);
     }
-  }, 200, corsHeaders);
+
+    if (!env.DB) {
+      return jsonResponse({ error: 'Database not configured' }, 503, corsHeaders);
+    }
+
+    // 查找用户（使用新的表结构）
+    const user = await env.DB.prepare(
+      'SELECT id, username, email, password_hash FROM users WHERE username = ? OR email = ?'
+    ).bind(username, username).first();
+
+    if (!user) {
+      return jsonResponse({ error: 'Invalid credentials' }, 401, corsHeaders);
+    }
+
+    // 验证密码
+    const hashedPassword = await simpleHash(password);
+    if (user.password_hash !== hashedPassword) {
+      return jsonResponse({ error: 'Invalid credentials' }, 401, corsHeaders);
+    }
+
+    // 查询用户角色
+    const userRoles = await env.DB.prepare(`
+      SELECT r.name, r.display_name
+      FROM user_roles ur
+      JOIN roles r ON ur.role_id = r.id
+      WHERE ur.user_id = ?
+    `).bind(user.id).all();
+
+    const isAdmin = userRoles.results.some(r => r.name === 'super_admin' || r.name === 'admin');
+
+    // 生成 token
+    const token = await generateToken(user.id);
+
+    return jsonResponse({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        isAdmin: isAdmin
+      }
+    }, 200, corsHeaders);
+
+  } catch (error) {
+    console.error('Login error:', error);
+    return jsonResponse({ 
+      error: 'Login failed', 
+      message: error.message 
+    }, 500, corsHeaders);
+  }
 }
 
 // 简单的哈希函数（生产环境应使用 bcrypt 或类似库）
