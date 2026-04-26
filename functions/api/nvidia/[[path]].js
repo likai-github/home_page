@@ -70,13 +70,18 @@ async function handleGetApiKey(request, env, corsHeaders) {
     return jsonResponse({ error: 'Database not configured' }, 503, corsHeaders);
   }
 
-  const config = await env.DB.prepare(
-    'SELECT value FROM config WHERE key = ?'
-  ).bind('nvidia_api_key').first();
+  try {
+    const config = await env.DB.prepare(
+      'SELECT value FROM config WHERE key = ?'
+    ).bind('nvidia_api_key').first();
 
-  return jsonResponse({
-    apiKey: config ? config.value : ''
-  }, 200, corsHeaders);
+    return jsonResponse({
+      apiKey: config ? config.value : ''
+    }, 200, corsHeaders);
+  } catch (error) {
+    console.error('Get API key error:', error);
+    return jsonResponse({ error: error.message }, 500, corsHeaders);
+  }
 }
 
 async function handleGetModels(request, env, corsHeaders) {
