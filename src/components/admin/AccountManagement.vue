@@ -50,7 +50,7 @@
                 <td>{{ user.email }}</td>
                 <td>
                   <span class="role-badge" :class="user.isAdmin ? 'admin' : 'user'">
-                    {{ user.isAdmin ? '管理员' : '普通用户' }}
+                    {{ user.roles || (user.isAdmin ? '管理员' : '普通用户') }}
                   </span>
                 </td>
                 <td>{{ formatDate(user.created_at) }}</td>
@@ -137,10 +137,12 @@ const fetchUsers = async () => {
     const data = await api.getUsers();
     users.value = (data.users || []).map(u => ({
       ...u,
-      isAdmin: u.bio && u.bio.includes('admin') // 简化的管理员判断
+      name: u.username || u.name,
+      isAdmin: u.roles && (u.roles.includes('超级管理员') || u.roles.includes('管理员'))
     }));
   } catch (err) {
     error.value = '✗ ' + (err.message || '加载用户失败');
+    console.error('获取用户列表失败:', err);
   } finally {
     loading.value = false;
   }
