@@ -36,10 +36,9 @@ const route = useRoute()
 
 const menuItems = ref([
   { name: '首页', path: '/' },
-  { name: '关于', path: '/about' },
-  { name: '项目', path: '/projects' },
+  { name: 'AI 对话', path: '/chat' },
   { name: '博客', path: '/blog' },
-  { name: '联系', path: '/contact' }
+  { name: '登录', path: '/login' }
 ])
 
 const currentRoute = computed(() => route.path)

@@ -13,7 +13,7 @@
             欢迎来到我的个人空间，这里记录着我的创作、思考与成长
           </p>
           <div class="hero-buttons">
-            <button class="btn btn-primary">了解更多</button>
+            <button class="btn btn-primary" @click="goToChat">开始对话</button>
             <button class="btn btn-secondary">查看作品</button>
           </div>
         </div>
@@ -58,6 +58,9 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const features = ref([
   {
@@ -88,6 +91,10 @@ const stats = ref([
   { number: '100+', label: '代码提交' },
   { number: '10+', label: '技术栈' }
 ])
+
+const goToChat = () => {
+  router.push('/chat')
+}
 </script>
 
 <style scoped>
