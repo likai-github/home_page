@@ -306,32 +306,9 @@ const sendMessage = async (content) => {
     }));
     history.push({ role: 'user', content });
 
-    // 调用后端代理（需要后端支持 /api/chat）
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(localStorage.getItem('token') && { 'Authorization': `Bearer ${localStorage.getItem('token')}` }),
-      },
-      body: JSON.stringify({
-        platform_id: parseInt(platformId),
-        model_id: modelId,
-        messages: history,
-        stream: false,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(err.error || '请求失败');
-    }
-
-    const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content
-      || data.content
-      || data.reply
-      || '（无回复）';
-
+    // 调用后端 /api/chat，由后端持有 API Key 并转发
+    const data = await api.sendChat(parseInt(platformId), modelId, history);
+    const reply = data.choices?.[0]?.message?.content || '（无回复）';
     messages.value.push({
       role: 'assistant',
       content: reply,

@@ -27,6 +27,9 @@
               <span class="platform-badge">{{ platform.name }}</span>
             </div>
             <div class="platform-actions">
+              <button @click="testPlatform(platform)" class="btn-icon" title="测试连接" :disabled="testingId === platform.id">
+                {{ testingId === platform.id ? '⏳' : '🔌' }}
+              </button>
               <button @click="viewPlatformModels(platform)" class="btn-icon" title="查看模型">
                 📋
               </button>
@@ -56,6 +59,9 @@
             <div class="platform-meta">
               <span v-if="platform.api_key" class="meta-tag">🔑 已配置密钥</span>
               <span v-if="platform.base_url" class="meta-tag">🌐 {{ platform.base_url }}</span>
+              <span v-if="testResults[platform.id]" :class="['meta-tag', 'test-result', testResults[platform.id].success ? 'test-ok' : 'test-fail']">
+                {{ testResults[platform.id].success ? '✓' : '✗' }} {{ testResults[platform.id].message }}
+              </span>
             </div>
           </div>
         </div>
@@ -82,10 +88,10 @@
             <label>平台类型 *</label>
             <select v-model="platformForm.name" :disabled="!!editingPlatform" @change="onPlatformTypeChange">
               <option value="">请选择</option>
-              <option value="nvidia">NVIDIA</option>
               <option value="openai">OpenAI</option>
-              <option value="anthropic">Anthropic</option>
-              <option value="google">Google AI</option>
+              <option value="google">Google Gemini</option>
+              <option value="anthropic">Anthropic Claude</option>
+              <option value="nvidia">NVIDIA</option>
               <option value="custom">自定义</option>
             </select>
           </div>
@@ -241,6 +247,10 @@ const showKey = ref(false);
 const saving = ref(false);
 const error = ref('');
 
+// 测试相关
+const testingId = ref(null);
+const testResults = ref({});  // { [platformId]: { success, message } }
+
 const selectedPlatform = ref(null);
 const models = ref([]);
 const loadingModels = ref(false);
@@ -251,21 +261,21 @@ const modelSearch = ref('');
 
 // 平台默认 URL 配置
 const platformDefaults = {
-  nvidia: {
-    base_url: 'https://integrate.api.nvidia.com/v1',
-    display_name: 'NVIDIA API'
-  },
   openai: {
     base_url: 'https://api.openai.com/v1',
     display_name: 'OpenAI API'
   },
+  google: {
+    base_url: 'https://generativelanguage.googleapis.com/v1beta',
+    display_name: 'Google Gemini'
+  },
   anthropic: {
     base_url: 'https://api.anthropic.com/v1',
-    display_name: 'Anthropic API'
+    display_name: 'Anthropic Claude'
   },
-  google: {
-    base_url: 'https://generativelanguage.googleapis.com/v1',
-    display_name: 'Google AI API'
+  nvidia: {
+    base_url: 'https://integrate.api.nvidia.com/v1',
+    display_name: 'NVIDIA API'
   },
   custom: {
     base_url: '',
@@ -314,6 +324,19 @@ const disabledModelsCount = computed(() =>
 onMounted(() => {
   loadPlatforms();
 });
+
+const testPlatform = async (platform) => {
+  testingId.value = platform.id;
+  testResults.value[platform.id] = null;
+  try {
+    const data = await api.testPlatform(platform.id);
+    testResults.value[platform.id] = { success: data.success, message: data.message };
+  } catch (err) {
+    testResults.value[platform.id] = { success: false, message: err.message || '测试失败' };
+  } finally {
+    testingId.value = null;
+  }
+};
 
 const loadPlatforms = async () => {
   loading.value = true;
@@ -695,6 +718,10 @@ const parseMetadata = (metadata) => {
   border-radius: 12px;
   font-size: 0.85rem;
 }
+
+.test-result { font-weight: 500; }
+.test-ok   { background: #d4edda; color: #155724; }
+.test-fail { background: #f8d7da; color: #721c24; }
 
 .empty-state {
   text-align: center;

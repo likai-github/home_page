@@ -89,6 +89,12 @@ class ApiClient {
     });
   }
 
+  async testPlatform(platformId) {
+    return this.request(`/platforms/${platformId}/test`, {
+      method: 'POST',
+    });
+  }
+
   async updateModel(platformId, modelId, data) {
     return this.request(`/platforms/${platformId}/models/${encodeURIComponent(modelId)}`, {
       method: 'PUT',
@@ -175,6 +181,14 @@ class ApiClient {
   async resetDatabase() {
     return this.request('/database/reset', {
       method: 'POST',
+    });
+  }
+
+  // AI 对话
+  async sendChat(platformId, modelId, messages) {
+    return this.request('/chat', {
+      method: 'POST',
+      body: JSON.stringify({ platform_id: platformId, model_id: modelId, messages }),
     });
   }
 }
