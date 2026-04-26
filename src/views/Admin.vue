@@ -81,6 +81,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { clearAuth } from '../main.js';
 import DashboardView from '../components/admin/DashboardView.vue';
 import ApiManagement from '../components/admin/ApiManagement.vue';
 import AccountManagement from '../components/admin/AccountManagement.vue';
@@ -118,9 +119,7 @@ const toggleSidebar = () => {
 };
 
 const logout = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('username');
-  localStorage.removeItem('isAdmin');
+  clearAuth();
   router.push('/login');
 };
 

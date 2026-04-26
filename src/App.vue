@@ -3,13 +3,35 @@
     <header class="header">
       <nav class="nav-container">
         <div class="logo">
-          <h1>gaoying的网站</h1>
+          <router-link to="/">gaoying的网站</router-link>
         </div>
         <ul class="nav-menu">
-          <li v-for="item in menuItems" :key="item.path" 
-              :class="{ active: currentRoute === item.path }">
-            <router-link :to="item.path">{{ item.name }}</router-link>
+          <li :class="{ active: currentRoute === '/' }">
+            <router-link to="/">首页</router-link>
           </li>
+          <li :class="{ active: currentRoute === '/chat' }">
+            <router-link to="/chat">AI 对话</router-link>
+          </li>
+          <li :class="{ active: currentRoute === '/blog' }">
+            <router-link to="/blog">博客</router-link>
+          </li>
+
+          <!-- 未登录：显示登录 -->
+          <li v-if="!auth.token" :class="{ active: currentRoute === '/login' }">
+            <router-link to="/login">登录</router-link>
+          </li>
+
+          <!-- 已登录：显示后台 + 退出 -->
+          <template v-else>
+            <li v-if="auth.isAdmin" :class="{ active: currentRoute.startsWith('/admin') }">
+              <router-link to="/admin">管理后台</router-link>
+            </li>
+            <li>
+              <button class="btn-logout-nav" @click="handleLogout">
+                退出 ({{ auth.username }})
+              </button>
+            </li>
+          </template>
         </ul>
       </nav>
     </header>
@@ -29,19 +51,20 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { authState, clearAuth } from './main.js'
 
-const route = useRoute()
+const route  = useRoute()
+const router = useRouter()
 
-const menuItems = ref([
-  { name: '首页', path: '/' },
-  { name: 'AI 对话', path: '/chat' },
-  { name: '博客', path: '/blog' },
-  { name: '登录', path: '/login' }
-])
-
+const auth = authState
 const currentRoute = computed(() => route.path)
+
+const handleLogout = () => {
+  clearAuth()
+  router.push('/login')
+}
 </script>
 
 <style scoped>
@@ -50,115 +73,102 @@ const currentRoute = computed(() => route.path)
   top: 0;
   left: 0;
   right: 0;
+  z-index: 1000;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
-  z-index: 1000;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .nav-container {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 1.5rem 3rem;
+  padding: 0 2rem;
+  height: 64px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
 }
 
-.logo h1 {
-  font-size: 1.8rem;
+.logo a {
+  font-size: 1.3rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin: 0;
-  letter-spacing: 2px;
+  color: #1e293b;
+  text-decoration: none;
 }
 
 .nav-menu {
-  display: flex;
-  gap: 3rem;
   list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
   margin: 0;
   padding: 0;
 }
 
-.nav-menu li {
-  position: relative;
-}
-
-.nav-menu a {
-  color: #333;
-  text-decoration: none;
-  font-size: 1rem;
+.nav-menu li a,
+.btn-logout-nav {
+  display: block;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
   font-weight: 500;
-  transition: color 0.3s ease;
-  padding: 0.5rem 0;
+  color: #475569;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
 }
 
-.nav-menu a:hover {
-  color: #667eea;
+.nav-menu li a:hover,
+.btn-logout-nav:hover {
+  background: #f1f5f9;
+  color: #1e293b;
 }
 
 .nav-menu li.active a {
-  color: #667eea;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
 }
 
-.nav-menu li.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 2px;
+.btn-logout-nav {
+  color: #ef4444;
+}
+.btn-logout-nav:hover {
+  background: #fef2f2;
+  color: #dc2626;
 }
 
 .main-content {
-  margin-top: 80px;
-  min-height: calc(100vh - 160px);
+  padding-top: 64px;
+  min-height: 100vh;
 }
 
 .footer {
-  background: #1a1a1a;
-  color: #fff;
   text-align: center;
-  padding: 2rem;
-  margin-top: 4rem;
-}
-
-.footer p {
-  margin: 0;
-  opacity: 0.8;
+  padding: 1.5rem;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  border-top: 1px solid #f1f5f9;
 }
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity 0.15s ease;
 }
-
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
 }
 
-@media (max-width: 768px) {
-  .nav-container {
-    flex-direction: column;
-    gap: 1.5rem;
-    padding: 1rem 1.5rem;
-  }
-
-  .nav-menu {
-    gap: 1.5rem;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .main-content {
-    margin-top: 140px;
-  }
+@media (max-width: 640px) {
+  .nav-container { padding: 0 1rem; }
+  .nav-menu { gap: 0; }
+  .nav-menu li a,
+  .btn-logout-nav { padding: 0.4rem 0.6rem; font-size: 0.82rem; }
 }
 </style>

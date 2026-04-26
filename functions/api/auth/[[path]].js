@@ -148,8 +148,15 @@ async function handleLogin(request, env, corsHeaders) {
 
     const isAdmin = userRoles.results.some(r => r.name === 'super_admin' || r.name === 'admin');
 
-    // 生成 token
+    // 生成 token 并存入数据库
     const token = await generateToken(user.id);
+
+    // 存储 token（有效期 30 天）
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    await env.DB.prepare(`
+      INSERT INTO config (key, value) VALUES (?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP
+    `).bind(`token_${user.id}`, JSON.stringify({ token, expiresAt }), JSON.stringify({ token, expiresAt })).run();
 
     return jsonResponse({
       token,

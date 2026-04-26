@@ -23,8 +23,19 @@ class ApiClient {
         },
       });
 
+      // 401 说明 token 失效，清除本地状态
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        localStorage.removeItem('isAdmin');
+        // 动态导入避免循环依赖
+        import('./main.js').then(({ clearAuth }) => clearAuth()).catch(() => {});
+        window.location.href = '/login';
+        throw new Error('登录已过期，请重新登录');
+      }
+
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({ error: 'Request failed' }));
         throw new Error(error.error || 'Request failed');
       }
 

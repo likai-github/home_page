@@ -212,18 +212,24 @@ const loadAvailableModels = async () => {
   try {
     const data = await api.getPlatforms();
     const platforms = data.platforms || [];
+
     for (const p of platforms) {
       if (p.status === 'active') {
         try {
           const md = await api.getPlatformModels(p.id);
-          p.models = (md.models || []).filter(m => m.enabled);
+          // SQLite 返回 0/1 整数，需显式转换为布尔值
+          p.models = (md.models || []).filter(m => m.enabled == 1 || m.enabled === true);
         } catch {
           p.models = [];
         }
+      } else {
+        p.models = [];
       }
     }
+
     availablePlatforms.value = platforms.filter(p => p.models && p.models.length > 0);
-    // 自动选第一个
+
+    // 自动选第一个可用模型
     if (availablePlatforms.value.length > 0) {
       const fp = availablePlatforms.value[0];
       if (fp.models.length > 0) {

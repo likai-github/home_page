@@ -1,39 +1,45 @@
-import { createApp } from 'vue'
+import { createApp, reactive } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import Home from './views/Home.vue'
 import './style.css'
 
+// 全局响应式认证状态，供 App.vue 等组件共享
+export const authState = reactive({
+  token: localStorage.getItem('token') || '',
+  username: localStorage.getItem('username') || '',
+  isAdmin: localStorage.getItem('isAdmin') === 'true',
+})
+
+export function setAuth({ token, username, isAdmin }) {
+  authState.token = token
+  authState.username = username
+  authState.isAdmin = isAdmin
+  localStorage.setItem('token', token)
+  localStorage.setItem('username', username)
+  localStorage.setItem('isAdmin', String(isAdmin))
+}
+
+export function clearAuth() {
+  authState.token = ''
+  authState.username = ''
+  authState.isAdmin = false
+  localStorage.removeItem('token')
+  localStorage.removeItem('username')
+  localStorage.removeItem('isAdmin')
+}
+
 const routes = [
-  {
-    path: '/',
-    name: 'Home',
-    component: Home
-  },
-  {
-    path: '/chat',
-    name: 'Chat',
-    component: () => import('./views/Chat.vue')
-  },
-  {
-    path: '/blog',
-    name: 'Blog',
-    component: () => import('./views/Blog.vue')
-  },
-  {
-    path: '/login',
-    name: 'Login',
-    component: () => import('./views/Login.vue')
-  },
+  { path: '/', name: 'Home', component: Home },
+  { path: '/chat', name: 'Chat', component: () => import('./views/Chat.vue') },
+  { path: '/blog', name: 'Blog', component: () => import('./views/Blog.vue') },
+  { path: '/login', name: 'Login', component: () => import('./views/Login.vue') },
   {
     path: '/admin',
     name: 'Admin',
     component: () => import('./views/Admin.vue'),
     meta: { requiresAuth: true }
   }
-  // 后续可以在这里添加更多路由
-  // { path: '/about', name: 'About', component: () => import('./views/About.vue') },
-  // { path: '/projects', name: 'Projects', component: () => import('./views/Projects.vue') },
 ]
 
 const router = createRouter({
@@ -41,17 +47,16 @@ const router = createRouter({
   routes
 })
 
-// 路由守卫 - 检查登录状态
-router.beforeEach((to, from, next) => {
+// 路由守卫：有 requiresAuth 的页面必须有 token，否则跳登录
+router.beforeEach((to, _from, next) => {
   if (to.meta.requiresAuth) {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      next('/login');
+    if (!authState.token) {
+      next({ path: '/login', query: { redirect: to.fullPath } })
     } else {
-      next();
+      next()
     }
   } else {
-    next();
+    next()
   }
 })
 

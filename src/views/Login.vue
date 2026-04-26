@@ -56,10 +56,12 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import api from '../api';
+import { setAuth } from '../main.js';
 
 const router = useRouter();
+const route  = useRoute();
 const isRegister = ref(false);
 const loading = ref(false);
 const error = ref('');
@@ -117,16 +119,23 @@ const handleSubmit = async () => {
         password: form.value.password
       });
       
-      // 保存 token 和用户信息
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('username', data.user.username);
-      localStorage.setItem('userId', data.user.id);
-      localStorage.setItem('isAdmin', data.user.isAdmin ? 'true' : 'false');
+      // 更新全局响应式认证状态（同时写 localStorage）
+      setAuth({
+        token: data.token,
+        username: data.user.username,
+        isAdmin: !!data.user.isAdmin,
+      });
       
       success.value = data.user.isAdmin ? '✓ 管理员登录成功！' : '✓ 登录成功！';
       setTimeout(() => {
-        router.push('/admin');
-      }, 1000);
+        // 如果有 redirect 参数则跳回原页面，否则管理员去后台，普通用户去首页
+        const redirect = route.query.redirect;
+        if (redirect) {
+          router.push(redirect);
+        } else {
+          router.push(data.user.isAdmin ? '/admin' : '/');
+        }
+      }, 800);
     }
   } catch (err) {
     error.value = err.message || '操作失败，请重试';
