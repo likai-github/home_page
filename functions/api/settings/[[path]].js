@@ -2,7 +2,7 @@
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const path = url.pathname.replace('/api/settings/', '');
+  const path = url.pathname.replace('/api/settings/', '').replace(/\/$/, '');
 
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -15,12 +15,15 @@ export async function onRequest(context) {
   }
 
   try {
-    if (path === '' && request.method === 'GET') {
+    // GET /api/settings 或 GET /api/settings/
+    if ((path === '' || path === 'settings') && request.method === 'GET') {
       return handleGetSettings(request, env, corsHeaders);
-    } else if (path === '' && request.method === 'POST') {
+    } 
+    // POST /api/settings 或 POST /api/settings/
+    else if ((path === '' || path === 'settings') && request.method === 'POST') {
       return handleSaveSettings(request, env, corsHeaders);
     } else {
-      return jsonResponse({ error: 'Not Found' }, 404, corsHeaders);
+      return jsonResponse({ error: 'Not Found', path, method: request.method }, 404, corsHeaders);
     }
   } catch (error) {
     console.error('Settings API Error:', error);

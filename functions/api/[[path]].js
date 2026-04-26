@@ -20,14 +20,27 @@ export async function onRequest(context) {
   }
 
   try {
-    // 路由分发
+    // 路由分发 - 只处理 users 和 posts
+    // 其他路径（auth, platforms, settings, database, nvidia）由各自的文件夹处理
     if (path.startsWith('users')) {
       return handleUsers(request, env, corsHeaders);
     } else if (path.startsWith('posts')) {
       return handlePosts(request, env, corsHeaders);
-    } else {
-      return jsonResponse({ error: 'Not Found' }, 404, corsHeaders);
     }
+    
+    // 如果不是 users 或 posts，返回 null 让其他处理器处理
+    // 注意：这里不返回 404，让 Cloudflare Pages 继续查找其他匹配的路由
+    return new Response(JSON.stringify({ 
+      error: 'Not Found',
+      message: 'This endpoint is not handled by the main API router',
+      path: path
+    }), {
+      status: 404,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders,
+      },
+    });
   } catch (error) {
     console.error('API Error:', error);
     return jsonResponse({ error: error.message }, 500, corsHeaders);
