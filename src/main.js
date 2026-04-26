@@ -31,7 +31,12 @@ export function clearAuth() {
 
 const routes = [
   { path: '/', name: 'Home', component: Home },
-  { path: '/chat', name: 'Chat', component: () => import('./views/Chat.vue') },
+  {
+    path: '/chat',
+    name: 'Chat',
+    component: () => import('./views/Chat.vue'),
+    meta: { requiresAuth: true }   // 登录后才能使用 AI 对话
+  },
   { path: '/blog', name: 'Blog', component: () => import('./views/Blog.vue') },
   { path: '/login', name: 'Login', component: () => import('./views/Login.vue') },
   {

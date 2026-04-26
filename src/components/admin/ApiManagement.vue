@@ -57,7 +57,7 @@
               </span>
             </div>
             <div class="platform-meta">
-              <span v-if="platform.api_key" class="meta-tag">🔑 已配置密钥</span>
+              <span v-if="platform.has_api_key" class="meta-tag">🔑 已配置密钥</span>
               <span v-if="platform.base_url" class="meta-tag">🌐 {{ platform.base_url }}</span>
               <span v-if="testResults[platform.id]" :class="['meta-tag', 'test-result', testResults[platform.id].success ? 'test-ok' : 'test-fail']">
                 {{ testResults[platform.id].success ? '✓' : '✗' }} {{ testResults[platform.id].message }}
@@ -357,16 +357,31 @@ const loadPlatforms = async () => {
   }
 };
 
-const editPlatform = (platform) => {
+const editPlatform = async (platform) => {
   editingPlatform.value = platform;
-  platformForm.value = {
-    name: platform.name,
-    display_name: platform.display_name,
-    api_key: platform.api_key || '',
-    base_url: platform.base_url || '',
-    description: platform.description || '',
-    status: platform.status
-  };
+  // 编辑时需要获取完整平台信息（含 api_key），调用单个平台接口
+  try {
+    const data = await api.getPlatform(platform.id);
+    const full = data.platform || platform;
+    platformForm.value = {
+      name: full.name,
+      display_name: full.display_name,
+      api_key: full.api_key || '',
+      base_url: full.base_url || '',
+      description: full.description || '',
+      status: full.status,
+    };
+  } catch {
+    // 降级：用列表数据（api_key 为空）
+    platformForm.value = {
+      name: platform.name,
+      display_name: platform.display_name,
+      api_key: '',
+      base_url: platform.base_url || '',
+      description: platform.description || '',
+      status: platform.status,
+    };
+  }
 };
 
 const onPlatformTypeChange = () => {
@@ -442,7 +457,8 @@ const viewPlatformModels = async (platform) => {
   syncError.value = '';
 
   try {
-    const data = await api.getPlatformModels(platform.id);
+    // 管理后台用全量接口，可以看到未启用的模型
+    const data = await api.getAllPlatformModels(platform.id);
     models.value = data.models || [];
   } catch (err) {
     console.error('加载模型失败:', err);

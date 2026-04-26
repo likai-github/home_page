@@ -245,16 +245,10 @@ const loadAvailableModels = async () => {
     await Promise.all(activePlatforms.map(async (p) => {
       try {
         const md = await api.getPlatformModels(p.id);
-        const allModels = md.models || [];
-        // SQLite 返回 0/1 整数，用 == 宽松比较
-        p.models = allModels.filter(m => m.enabled == 1 || m.enabled === true);
+        // 后端已过滤 enabled=1，直接使用；保留前端二次过滤作为兜底
+        p.models = (md.models || []).filter(m => m.enabled == 1 || m.enabled === true || m.enabled === undefined);
 
-        console.log(`[Chat] 平台 ${p.display_name}(id=${p.id}): 共${allModels.length}个模型, 已启用${p.models.length}个`);
-        if (allModels.length > 0) {
-          console.log(`[Chat]   模型样本:`, JSON.stringify(allModels.slice(0, 2).map(m => ({
-            model_id: m.model_id, model_name: m.model_name, enabled: m.enabled, enabled_type: typeof m.enabled
-          }))));
-        }
+        console.log(`[Chat] 平台 ${p.display_name}(id=${p.id}): ${p.models.length}个已启用模型`);
       } catch (err) {
         console.warn(`[Chat] 平台 ${p.display_name} 模型加载失败:`, err.message);
         p.models = [];

@@ -68,9 +68,13 @@ class ApiClient {
     return this.request(`/platforms/${id}`, { method: 'DELETE' });
   }
 
-  // 获取平台模型 —— 公开接口，Chat 页面无需登录也能调用
+  // 获取平台已启用模型（公开，Chat 页面用）
   async getPlatformModels(platformId) {
     return this.request(`/platforms/${platformId}/models`);
+  }
+  // 获取平台全部模型（管理后台用，含未启用的，需登录）
+  async getAllPlatformModels(platformId) {
+    return this.request(`/platforms/${platformId}/models/all`);
   }
   async syncPlatformModels(platformId) {
     return this.request(`/platforms/${platformId}/sync-models`, { method: 'POST' });

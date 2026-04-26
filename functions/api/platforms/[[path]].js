@@ -32,7 +32,7 @@ export async function onRequest(context) {
       return handleCreatePlatform(request, env, corsHeaders);
     }
     
-    // GET /api/platforms/:id - 获取单个平台
+    // GET /api/platforms/:id - 获取单个平台（管理后台编辑用，含 api_key，需登录）
     if (path.match(/^\d+$/) && request.method === 'GET') {
       return handleGetPlatform(path, env, corsHeaders);
     }
@@ -47,10 +47,16 @@ export async function onRequest(context) {
       return handleDeletePlatform(path, env, corsHeaders);
     }
     
-    // GET /api/platforms/:id/models - 获取平台的模型列表
+    // GET /api/platforms/:id/models - 获取平台已启用的模型（公开，Chat 页面用）
     if (path.match(/^\d+\/models$/) && request.method === 'GET') {
       const platformId = path.split('/')[0];
       return handleGetPlatformModels(platformId, env, corsHeaders);
+    }
+
+    // GET /api/platforms/:id/models/all - 获取平台全部模型（管理后台用，需登录）
+    if (path.match(/^\d+\/models\/all$/) && request.method === 'GET') {
+      const platformId = path.split('/')[0];
+      return handleGetAllPlatformModels(platformId, env, corsHeaders);
     }
     
     // POST /api/platforms/:id/sync-models - 同步平台模型
@@ -80,7 +86,7 @@ export async function onRequest(context) {
   }
 }
 
-// 获取所有平台
+// 获取所有平台（管理后台用，返回完整信息含 api_key 脱敏）
 async function handleGetPlatforms(env, corsHeaders) {
   if (!env.DB) {
     return jsonResponse({ error: 'Database not configured' }, 503, corsHeaders);
@@ -89,7 +95,9 @@ async function handleGetPlatforms(env, corsHeaders) {
   try {
     const { results } = await env.DB.prepare(`
       SELECT 
-        p.*,
+        p.id, p.name, p.display_name, p.base_url, p.description, p.status,
+        p.created_at, p.updated_at,
+        CASE WHEN p.api_key IS NOT NULL AND p.api_key != '' THEN 1 ELSE 0 END as has_api_key,
         COUNT(m.id) as model_count,
         SUM(CASE WHEN m.enabled = 1 THEN 1 ELSE 0 END) as enabled_model_count
       FROM api_platforms p
@@ -199,7 +207,7 @@ async function handleDeletePlatform(id, env, corsHeaders) {
   }
 }
 
-// 获取平台的模型列表
+// 获取平台的模型列表（只返回已启用的模型，且不含敏感字段）
 async function handleGetPlatformModels(platformId, env, corsHeaders) {
   if (!env.DB) {
     return jsonResponse({ error: 'Database not configured' }, 503, corsHeaders);
@@ -207,14 +215,36 @@ async function handleGetPlatformModels(platformId, env, corsHeaders) {
 
   try {
     const { results } = await env.DB.prepare(`
-      SELECT * FROM api_models 
-      WHERE platform_id = ?
+      SELECT id, platform_id, model_id, model_name, description, enabled, metadata, created_at
+      FROM api_models 
+      WHERE platform_id = ? AND enabled = 1
       ORDER BY model_name
     `).bind(platformId).all();
 
     return jsonResponse({ models: results }, 200, corsHeaders);
   } catch (error) {
     console.error('Get platform models error:', error);
+    return jsonResponse({ error: error.message }, 500, corsHeaders);
+  }
+}
+
+// 获取平台全部模型（管理后台用，含未启用的，需登录鉴权由中间件保证）
+async function handleGetAllPlatformModels(platformId, env, corsHeaders) {
+  if (!env.DB) {
+    return jsonResponse({ error: 'Database not configured' }, 503, corsHeaders);
+  }
+
+  try {
+    const { results } = await env.DB.prepare(`
+      SELECT id, platform_id, model_id, model_name, description, enabled, metadata, created_at, updated_at
+      FROM api_models 
+      WHERE platform_id = ?
+      ORDER BY model_name
+    `).bind(platformId).all();
+
+    return jsonResponse({ models: results }, 200, corsHeaders);
+  } catch (error) {
+    console.error('Get all platform models error:', error);
     return jsonResponse({ error: error.message }, 500, corsHeaders);
   }
 }

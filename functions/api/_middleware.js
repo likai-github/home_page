@@ -22,7 +22,7 @@ const PROTECTED_PREFIXES = [
   '/api/chat',
 ];
 
-// 平台的写操作也需要 token
+// 平台的写操作 + 管理专用查询需要 token
 const PROTECTED_PLATFORM_METHODS = ['POST', 'PUT', 'DELETE'];
 
 export async function onRequest(context) {
@@ -52,6 +52,9 @@ export async function onRequest(context) {
     if (PROTECTED_PREFIXES.some(p => pathname.startsWith(p))) return true;
     // 平台的写操作
     if (pathname.startsWith('/api/platforms') && PROTECTED_PLATFORM_METHODS.includes(method)) return true;
+    // 管理后台专用：全量模型列表、单个平台详情（含 api_key）
+    if (pathname.includes('/models/all')) return true;
+    if (pathname.match(/\/api\/platforms\/\d+$/) && method === 'GET') return true;
     return false;
   })();
 
