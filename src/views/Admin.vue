@@ -64,6 +64,11 @@
           <AccountManagement :is-admin="isAdmin" />
         </div>
 
+        <!-- 数据库管理 -->
+        <div v-if="currentView === 'database'" class="view-container">
+          <DatabaseManagement />
+        </div>
+
         <!-- 系统设置 -->
         <div v-if="currentView === 'settings'" class="view-container">
           <SystemSettings :is-admin="isAdmin" />
@@ -80,6 +85,7 @@ import DashboardView from '../components/admin/DashboardView.vue';
 import ApiManagement from '../components/admin/ApiManagement.vue';
 import AccountManagement from '../components/admin/AccountManagement.vue';
 import SystemSettings from '../components/admin/SystemSettings.vue';
+import DatabaseManagement from '../components/admin/DatabaseManagement.vue';
 
 const router = useRouter();
 const username = ref(localStorage.getItem('username') || '用户');
@@ -98,6 +104,7 @@ const menuItems = [
   { id: 'dashboard', label: '仪表盘', icon: '📊' },
   { id: 'api', label: 'API 管理', icon: '🔌' },
   { id: 'accounts', label: '账号管理', icon: '👥' },
+  { id: 'database', label: '数据库', icon: '🗄️' },
   { id: 'settings', label: '系统设置', icon: '⚙️' },
 ];
 

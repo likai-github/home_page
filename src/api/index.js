@@ -144,6 +144,39 @@ class ApiClient {
       body: JSON.stringify(settings),
     });
   }
+
+  // 数据库管理
+  async getDatabaseStatus() {
+    return this.request('/database/status');
+  }
+
+  async getDatabaseTables() {
+    return this.request('/database/tables');
+  }
+
+  async getTableColumns(tableName) {
+    return this.request(`/database/tables/${tableName}/columns`);
+  }
+
+  async getTableSampleData(tableName) {
+    return this.request(`/database/tables/${tableName}/data`);
+  }
+
+  async getMigrationHistory() {
+    return this.request('/database/migrations');
+  }
+
+  async runMigration() {
+    return this.request('/database/migrate', {
+      method: 'POST',
+    });
+  }
+
+  async resetDatabase() {
+    return this.request('/database/reset', {
+      method: 'POST',
+    });
+  }
 }
 
 export const api = new ApiClient();
