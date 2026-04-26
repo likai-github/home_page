@@ -1,4 +1,4 @@
-// API 客户端 - 用于 Vue 组件中调用后端 API
+  // API 客户端 - 用于 Vue 组件中调用后端 API
 
 const API_BASE = import.meta.env.PROD 
   ? '/api'  // 生产环境使用相对路径
@@ -11,12 +11,14 @@ class ApiClient {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    const token = localStorage.getItem('token');
     
     try {
       const response = await fetch(url, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
           ...options.headers,
         },
       });
@@ -31,6 +33,47 @@ class ApiClient {
       console.error('API Error:', error);
       throw error;
     }
+  }
+
+  // 用户认证
+  async register(data) {
+    return this.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async login(data) {
+    return this.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // NVIDIA API 管理
+  async saveNvidiaApiKey(apiKey) {
+    return this.request('/nvidia/api-key', {
+      method: 'POST',
+      body: JSON.stringify({ apiKey }),
+    });
+  }
+
+  async getNvidiaApiKey() {
+    return this.request('/nvidia/api-key');
+  }
+
+  async getNvidiaModels(apiKey) {
+    return this.request('/nvidia/models', {
+      method: 'POST',
+      body: JSON.stringify({ apiKey }),
+    });
+  }
+
+  async toggleNvidiaModel(modelId, enabled) {
+    return this.request('/nvidia/models/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ modelId, enabled }),
+    });
   }
 
   // 用户相关

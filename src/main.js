@@ -14,6 +14,17 @@ const routes = [
     path: '/blog',
     name: 'Blog',
     component: () => import('./views/Blog.vue')
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('./views/Login.vue')
+  },
+  {
+    path: '/admin',
+    name: 'Admin',
+    component: () => import('./views/Admin.vue'),
+    meta: { requiresAuth: true }
   }
   // 后续可以在这里添加更多路由
   // { path: '/about', name: 'About', component: () => import('./views/About.vue') },
@@ -23,6 +34,20 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// 路由守卫 - 检查登录状态
+router.beforeEach((to, from, next) => {
+  if (to.meta.requiresAuth) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      next('/login');
+    } else {
+      next();
+    }
+  } else {
+    next();
+  }
 })
 
 const app = createApp(App)
