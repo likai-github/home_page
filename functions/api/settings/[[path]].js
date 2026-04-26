@@ -36,15 +36,26 @@ async function handleGetSettings(request, env, corsHeaders) {
     return jsonResponse({ error: 'Database not configured' }, 503, corsHeaders);
   }
 
-  // 获取所有配置
+  // 获取所有配置（不使用 setting_ 前缀）
   const { results } = await env.DB.prepare(
-    'SELECT key, value FROM config WHERE key LIKE ?'
-  ).bind('setting_%').all();
+    'SELECT key, value FROM config'
+  ).all();
 
   const settings = {};
+  
+  // 将数据库中的 snake_case 转换为 camelCase
+  const keyMapping = {
+    'allow_registration': 'allowRegistration',
+    'require_email_verification': 'requireEmailVerification',
+    'api_rate_limit': 'apiRateLimit',
+    'enable_api_logging': 'enableApiLogging',
+    'session_timeout': 'sessionTimeout',
+    'min_password_length': 'minPasswordLength'
+  };
+  
   results.forEach(row => {
-    const key = row.key.replace('setting_', '');
-    settings[key] = row.value === 'true' ? true : row.value === 'false' ? false : row.value;
+    const camelKey = keyMapping[row.key] || row.key;
+    settings[camelKey] = row.value === 'true' ? true : row.value === 'false' ? false : isNaN(row.value) ? row.value : Number(row.value);
   });
 
   // 默认值
@@ -70,9 +81,19 @@ async function handleSaveSettings(request, env, corsHeaders) {
     return jsonResponse({ error: 'Database not configured' }, 503, corsHeaders);
   }
 
+  // camelCase 到 snake_case 的映射
+  const keyMapping = {
+    'allowRegistration': 'allow_registration',
+    'requireEmailVerification': 'require_email_verification',
+    'apiRateLimit': 'api_rate_limit',
+    'enableApiLogging': 'enable_api_logging',
+    'sessionTimeout': 'session_timeout',
+    'minPasswordLength': 'min_password_length'
+  };
+
   // 保存每个设置
   for (const [key, value] of Object.entries(settings)) {
-    const configKey = `setting_${key}`;
+    const configKey = keyMapping[key] || key;
     const configValue = String(value);
 
     await env.DB.prepare(`
@@ -80,15 +101,6 @@ async function handleSaveSettings(request, env, corsHeaders) {
       ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP
     `).bind(configKey, configValue, configValue).run();
   }
-
-  // 特别处理注册开关
-  await env.DB.prepare(`
-    INSERT INTO config (key, value) VALUES ('allow_registration', ?)
-    ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP
-  `).bind(
-    settings.allowRegistration ? 'true' : 'false',
-    settings.allowRegistration ? 'true' : 'false'
-  ).run();
 
   return jsonResponse({
     message: 'Settings saved successfully'
