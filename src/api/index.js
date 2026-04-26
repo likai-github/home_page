@@ -79,9 +79,10 @@ class ApiClient {
     return this.request(`/platforms/${platformId}/test`, { method: 'POST' });
   }
   async updateModel(platformId, modelId, data) {
+    // model_id 放在 body 里，避免 URL 路径中斜杠的编码问题（如 nvidia 的 meta/llama-xxx）
     return this.request(
-      `/platforms/${platformId}/models/${encodeURIComponent(modelId)}`,
-      { method: 'PUT', body: JSON.stringify(data) }
+      `/platforms/${platformId}/models`,
+      { method: 'PUT', body: JSON.stringify({ model_id: modelId, ...data }) }
     );
   }
 

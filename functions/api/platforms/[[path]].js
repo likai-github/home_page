@@ -65,10 +65,12 @@ export async function onRequest(context) {
       return handleTestPlatform(platformId, env, corsHeaders);
     }
     
-    // PUT /api/platforms/:id/models/:modelId - 更新模型状态
-    if (path.match(/^\d+\/models\/.+$/) && request.method === 'PUT') {
-      const [platformId, , modelId] = path.split('/');
-      return handleUpdateModel(platformId, modelId, request, env, corsHeaders);
+    // PUT /api/platforms/:id/models - 更新模型状态
+    // 注意：modelId 可能含斜杠（如 nvidia 的 meta/llama-3.1-8b-instruct）
+    // Cloudflare Pages 对 %2F 的处理不稳定，改为从 body 读取 model_id
+    if (path.match(/^\d+\/models/) && request.method === 'PUT') {
+      const platformId = path.split('/')[0];
+      return handleUpdateModel(platformId, request, env, corsHeaders);
     }
 
     return jsonResponse({ error: 'Not Found', path, method: request.method, url: url.pathname }, 404, corsHeaders);
@@ -308,23 +310,38 @@ async function handleTestPlatform(platformId, env, corsHeaders) {
   }
 }
 
-// 更新模型状态
-async function handleUpdateModel(platformId, modelId, request, env, corsHeaders) {
+// 更新模型状态 —— model_id 从 body 读取，避免 URL 斜杠编码问题
+async function handleUpdateModel(platformId, request, env, corsHeaders) {
   if (!env.DB) {
     return jsonResponse({ error: 'Database not configured' }, 503, corsHeaders);
   }
 
   try {
     const body = await request.json();
-    const { enabled } = body;
+    const { enabled, model_id } = body;
 
-    await env.DB.prepare(`
+    if (!model_id) {
+      return jsonResponse({ error: 'model_id is required in request body' }, 400, corsHeaders);
+    }
+
+    console.log(`[updateModel] platformId=${platformId} model_id="${model_id}" enabled=${enabled}`);
+
+    const result = await env.DB.prepare(`
       UPDATE api_models 
       SET enabled = ?, updated_at = CURRENT_TIMESTAMP
       WHERE platform_id = ? AND model_id = ?
-    `).bind(enabled ? 1 : 0, platformId, modelId).run();
+    `).bind(enabled ? 1 : 0, platformId, model_id).run();
 
-    return jsonResponse({ message: 'Model updated successfully' }, 200, corsHeaders);
+    console.log(`[updateModel] rows changed: ${result.meta?.changes}`);
+
+    if (!result.meta?.changes) {
+      return jsonResponse({
+        error: 'Model not found',
+        detail: `platform_id=${platformId}, model_id="${model_id}"`,
+      }, 404, corsHeaders);
+    }
+
+    return jsonResponse({ message: 'Model updated successfully', changes: result.meta.changes }, 200, corsHeaders);
   } catch (error) {
     console.error('Update model error:', error);
     return jsonResponse({ error: error.message }, 500, corsHeaders);

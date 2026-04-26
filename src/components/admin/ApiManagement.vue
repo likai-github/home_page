@@ -162,10 +162,16 @@
             <button @click="syncModels" class="btn-primary" :disabled="syncing">
               {{ syncing ? '⏳ 同步中...' : '🔄 同步模型' }}
             </button>
+            <button @click="enableAllModels" class="btn-enable-all" :disabled="savingAll" title="将所有模型设为启用">
+              {{ savingAll ? '⏳ 处理中...' : '✅ 全部启用' }}
+            </button>
+            <button @click="disableAllModels" class="btn-disable-all" :disabled="savingAll" title="将所有模型设为禁用">
+              ❌ 全部禁用
+            </button>
             <div class="search-box">
-              <input 
-                v-model="modelSearch" 
-                type="text" 
+              <input
+                v-model="modelSearch"
+                type="text"
                 placeholder="🔍 搜索模型..."
               />
             </div>
@@ -258,6 +264,7 @@ const syncing = ref(false);
 const syncSuccess = ref('');
 const syncError = ref('');
 const modelSearch = ref('');
+const savingAll = ref(false);
 
 // 平台默认 URL 配置
 const platformDefaults = {
@@ -493,6 +500,49 @@ const toggleModel = async (model) => {
   } catch (err) {
     console.error('切换模型状态失败:', err);
     alert('操作失败: ' + err.message);
+  }
+};
+
+const enableAllModels = async () => {
+  if (!selectedPlatform.value || !filteredModels.value.length) return;
+  savingAll.value = true;
+  try {
+    await Promise.all(
+      filteredModels.value
+        .filter(m => !m.enabled)
+        .map(m => api.updateModel(selectedPlatform.value.id, m.model_id, { enabled: true })
+          .then(() => { m.enabled = true; })
+        )
+    );
+    syncSuccess.value = `✓ 已启用 ${filteredModels.value.length} 个模型`;
+    await loadPlatforms();
+    setTimeout(() => { syncSuccess.value = ''; }, 3000);
+  } catch (err) {
+    syncError.value = '批量启用失败: ' + err.message;
+  } finally {
+    savingAll.value = false;
+  }
+};
+
+const disableAllModels = async () => {
+  if (!selectedPlatform.value || !filteredModels.value.length) return;
+  if (!confirm('确定要禁用所有模型吗？')) return;
+  savingAll.value = true;
+  try {
+    await Promise.all(
+      filteredModels.value
+        .filter(m => m.enabled)
+        .map(m => api.updateModel(selectedPlatform.value.id, m.model_id, { enabled: false })
+          .then(() => { m.enabled = false; })
+        )
+    );
+    syncSuccess.value = '✓ 已禁用所有模型';
+    await loadPlatforms();
+    setTimeout(() => { syncSuccess.value = ''; }, 3000);
+  } catch (err) {
+    syncError.value = '批量禁用失败: ' + err.message;
+  } finally {
+    savingAll.value = false;
   }
 };
 
@@ -905,8 +955,39 @@ const parseMetadata = (metadata) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
-  gap: 1rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
+
+.btn-enable-all {
+  padding: 0.6rem 1rem;
+  background: #d1fae5;
+  color: #065f46;
+  border: 1.5px solid #6ee7b7;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-enable-all:hover:not(:disabled) { background: #a7f3d0; }
+.btn-enable-all:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-disable-all {
+  padding: 0.6rem 1rem;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1.5px solid #fca5a5;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-disable-all:hover:not(:disabled) { background: #fecaca; }
+.btn-disable-all:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .search-box {
   flex: 1;

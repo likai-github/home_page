@@ -89,6 +89,18 @@
         <div v-if="messages.length === 0" class="welcome-screen">
           <h1 class="welcome-title">Hello, 有什么可以帮你？</h1>
           <p class="welcome-sub">选择模型后开始对话</p>
+
+          <!-- 模型加载错误提示 -->
+          <div v-if="loadError" class="load-error-box">
+            <span class="load-error-icon">⚠️</span>
+            <span>{{ loadError }}</span>
+          </div>
+
+          <!-- 无模型时的引导 -->
+          <div v-if="!loadError && availablePlatforms.length === 0" class="load-error-box loading-hint">
+            <span>⏳ 正在加载模型列表...</span>
+          </div>
+
           <div class="example-grid">
             <button
               v-for="ex in examplePrompts"
@@ -209,29 +221,53 @@ onMounted(async () => {
 });
 
 // --- 模型加载 ---
+const loadError = ref('');
+
 const loadAvailableModels = async () => {
+  loadError.value = '';
   try {
     const data = await api.getPlatforms();
-    const platforms = (data.platforms || []).filter(p => p.status === 'active');
+    const allPlatforms = data.platforms || [];
 
-    if (platforms.length === 0) return;
+    console.log('[Chat] 所有平台:', JSON.stringify(allPlatforms.map(p => ({
+      id: p.id, name: p.name, status: p.status,
+      model_count: p.model_count, enabled_model_count: p.enabled_model_count
+    }))));
+
+    const activePlatforms = allPlatforms.filter(p => p.status === 'active');
+
+    if (activePlatforms.length === 0) {
+      loadError.value = '没有启用的平台，请在管理后台配置';
+      return;
+    }
 
     // 并行加载所有平台的模型，互不影响
-    await Promise.all(platforms.map(async (p) => {
+    await Promise.all(activePlatforms.map(async (p) => {
       try {
         const md = await api.getPlatformModels(p.id);
+        const allModels = md.models || [];
         // SQLite 返回 0/1 整数，用 == 宽松比较
-        p.models = (md.models || []).filter(m => m.enabled == 1 || m.enabled === true);
+        p.models = allModels.filter(m => m.enabled == 1 || m.enabled === true);
+
+        console.log(`[Chat] 平台 ${p.display_name}(id=${p.id}): 共${allModels.length}个模型, 已启用${p.models.length}个`);
+        if (allModels.length > 0) {
+          console.log(`[Chat]   模型样本:`, JSON.stringify(allModels.slice(0, 2).map(m => ({
+            model_id: m.model_id, model_name: m.model_name, enabled: m.enabled, enabled_type: typeof m.enabled
+          }))));
+        }
       } catch (err) {
-        console.warn(`平台 ${p.display_name} 模型加载失败:`, err.message);
+        console.warn(`[Chat] 平台 ${p.display_name} 模型加载失败:`, err.message);
         p.models = [];
       }
     }));
 
-    // 只保留有已启用模型的平台
-    availablePlatforms.value = platforms.filter(p => p.models && p.models.length > 0);
+    availablePlatforms.value = activePlatforms.filter(p => p.models && p.models.length > 0);
 
-    console.log('可用平台:', availablePlatforms.value.map(p => `${p.display_name}(${p.models.length}个模型)`));
+    console.log('[Chat] 最终可用平台:', availablePlatforms.value.map(p => `${p.display_name}(${p.models.length}个模型)`));
+
+    if (availablePlatforms.value.length === 0) {
+      loadError.value = '所有平台均无已启用的模型，请在管理后台的"模型管理"中开启模型';
+    }
 
     // 自动选第一个可用模型
     if (availablePlatforms.value.length > 0) {
@@ -239,7 +275,8 @@ const loadAvailableModels = async () => {
       selectedModel.value = `${fp.id}:${fp.models[0].model_id}`;
     }
   } catch (err) {
-    console.error('加载平台列表失败:', err.message);
+    console.error('[Chat] 加载平台列表失败:', err.message);
+    loadError.value = `加载失败: ${err.message}`;
   }
 };
 
@@ -618,6 +655,26 @@ const goToAdmin = () => router.push('/admin');
   font-family: monospace;
   letter-spacing: 0.05em;
 }
+
+.load-error-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: #fff7ed;
+  border: 1.5px solid #fed7aa;
+  border-radius: 10px;
+  color: #c2410c;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  max-width: 480px;
+}
+.load-error-box.loading-hint {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+  color: #0369a1;
+}
+.load-error-icon { font-size: 1.1rem; flex-shrink: 0; }
 .example-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
