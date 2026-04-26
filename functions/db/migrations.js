@@ -140,7 +140,7 @@ export const migrations = [
   },
   {
     version: 3,
-    name: 'config_and_nvidia_tables',
+    name: 'config_and_api_platforms',
     up: async (db) => {
       // 配置表
       await db.prepare(`
@@ -152,14 +152,40 @@ export const migrations = [
         )
       `).run();
 
-      // NVIDIA 模型配置表
+      // API 平台表
       await db.prepare(`
-        CREATE TABLE IF NOT EXISTS nvidia_models (
-          model_id TEXT PRIMARY KEY,
-          enabled BOOLEAN DEFAULT 0,
+        CREATE TABLE IF NOT EXISTS api_platforms (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          display_name TEXT NOT NULL,
+          api_key TEXT,
+          base_url TEXT,
+          description TEXT,
+          status TEXT DEFAULT 'active',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `).run();
+
+      // API 模型表
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS api_models (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          platform_id INTEGER NOT NULL,
+          model_id TEXT NOT NULL,
+          model_name TEXT NOT NULL,
+          description TEXT,
+          enabled BOOLEAN DEFAULT 0,
+          metadata TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(platform_id, model_id)
+        )
+      `).run();
+
+      // 创建索引
+      await db.prepare('CREATE INDEX IF NOT EXISTS idx_api_models_platform ON api_models(platform_id)').run();
+      await db.prepare('CREATE INDEX IF NOT EXISTS idx_api_models_enabled ON api_models(enabled)').run();
     }
   },
   {

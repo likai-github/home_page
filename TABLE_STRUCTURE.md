@@ -13,10 +13,11 @@
 | 7 | role_permissions | 角色-权限关联 | v2 | 100+ |
 | 8 | role_menus | 角色-菜单关联 | v2 | 30+ |
 | 9 | config | 系统配置 | v3 | 6 |
-| 10 | nvidia_models | NVIDIA 模型配置 | v3 | 0+ |
-| 11 | posts | 文章表 | v4 | 0+ |
-| 12 | projects | 项目表 | v4 | 0+ |
-| 13 | comments | 评论表 | v4 | 0+ |
+| 10 | api_platforms | API 平台配置 | v3 | 0+ |
+| 11 | api_models | API 模型配置 | v3 | 0+ |
+| 12 | posts | 文章表 | v4 | 0+ |
+| 13 | projects | 项目表 | v4 | 0+ |
+| 14 | comments | 评论表 | v4 | 0+ |
 
 ## 🔐 RBAC 核心表（7个）
 
@@ -181,16 +182,38 @@ CREATE TABLE config (
 | session_timeout | 30 | 会话超时时间（分钟） |
 | min_password_length | 8 | 密码最小长度 |
 
-### 9. nvidia_models - NVIDIA 模型配置表
+### 9. api_platforms - API 平台配置表
 ```sql
-CREATE TABLE nvidia_models (
-  model_id TEXT PRIMARY KEY,
-  enabled BOOLEAN DEFAULT 0,
+CREATE TABLE api_platforms (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  api_key TEXT,
+  base_url TEXT,
+  description TEXT,
+  status TEXT DEFAULT 'active',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
-### 10. migrations - 迁移版本表
+### 10. api_models - API 模型配置表
+```sql
+CREATE TABLE api_models (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  platform_id INTEGER NOT NULL,
+  model_id TEXT NOT NULL,
+  model_name TEXT NOT NULL,
+  description TEXT,
+  enabled BOOLEAN DEFAULT 0,
+  metadata TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(platform_id, model_id)
+);
+```
+
+### 11. migrations - 迁移版本表
 ```sql
 CREATE TABLE migrations (
   version INTEGER PRIMARY KEY,
@@ -201,7 +224,7 @@ CREATE TABLE migrations (
 
 ## 📝 内容管理表（3个）
 
-### 11. posts - 文章表
+### 12. posts - 文章表
 ```sql
 CREATE TABLE posts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -216,7 +239,7 @@ CREATE TABLE posts (
 );
 ```
 
-### 12. projects - 项目表
+### 13. projects - 项目表
 ```sql
 CREATE TABLE projects (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -232,7 +255,7 @@ CREATE TABLE projects (
 );
 ```
 
-### 13. comments - 评论表
+### 14. comments - 评论表
 ```sql
 CREATE TABLE comments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

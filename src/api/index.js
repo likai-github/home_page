@@ -50,29 +50,49 @@ class ApiClient {
     });
   }
 
-  // NVIDIA API 管理
-  async saveNvidiaApiKey(apiKey) {
-    return this.request('/nvidia/api-key', {
+  // API 平台管理
+  async getPlatforms() {
+    return this.request('/platforms');
+  }
+
+  async createPlatform(data) {
+    return this.request('/platforms', {
       method: 'POST',
-      body: JSON.stringify({ apiKey }),
+      body: JSON.stringify(data),
     });
   }
 
-  async getNvidiaApiKey() {
-    return this.request('/nvidia/api-key');
+  async getPlatform(id) {
+    return this.request(`/platforms/${id}`);
   }
 
-  async getNvidiaModels(apiKey) {
-    return this.request('/nvidia/models', {
-      method: 'POST',
-      body: JSON.stringify({ apiKey }),
+  async updatePlatform(id, data) {
+    return this.request(`/platforms/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
   }
 
-  async toggleNvidiaModel(modelId, enabled) {
-    return this.request('/nvidia/models/toggle', {
+  async deletePlatform(id) {
+    return this.request(`/platforms/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getPlatformModels(platformId) {
+    return this.request(`/platforms/${platformId}/models`);
+  }
+
+  async syncPlatformModels(platformId) {
+    return this.request(`/platforms/${platformId}/sync-models`, {
       method: 'POST',
-      body: JSON.stringify({ modelId, enabled }),
+    });
+  }
+
+  async updateModel(platformId, modelId, data) {
+    return this.request(`/platforms/${platformId}/models/${encodeURIComponent(modelId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
   }
 
