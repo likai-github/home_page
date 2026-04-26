@@ -27,7 +27,7 @@ class ApiClient {
       localStorage.removeItem('token');
       localStorage.removeItem('username');
       localStorage.removeItem('isAdmin');
-      import('./main.js').then(({ clearAuth }) => clearAuth()).catch(() => {});
+      // 直接操作 localStorage，不依赖 main.js（避免循环依赖）
       // 只有当前不在登录页时才跳转，避免死循环
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login';
