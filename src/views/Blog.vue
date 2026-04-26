@@ -5,7 +5,14 @@
       
       <!-- 加载状态 -->
       <div v-if="loading" class="loading">
-        <p>加载中...</p>
+        <div class="skeleton-grid">
+          <div class="skeleton-card" v-for="i in 3" :key="i">
+            <div class="skeleton-title"></div>
+            <div class="skeleton-meta"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line short"></div>
+          </div>
+        </div>
       </div>
 
       <!-- 错误状态 -->
@@ -33,7 +40,9 @@
 
       <!-- 空状态 -->
       <div v-if="!loading && !error && posts.length === 0" class="empty">
-        <p>暂无文章</p>
+        <div class="empty-icon">✍️</div>
+        <p class="empty-title">暂无文章</p>
+        <p class="empty-sub">博客内容正在准备中，敬请期待</p>
       </div>
     </div>
   </div>
@@ -110,8 +119,36 @@ onMounted(() => {
   color: #666;
 }
 
-.error {
-  color: #e74c3c;
+.empty-icon { font-size: 4rem; margin-bottom: 1rem; }
+.empty-title { font-size: 1.5rem; font-weight: 600; color: #2c3e50; margin-bottom: 0.5rem; }
+.empty-sub { color: #999; font-size: 1rem; }
+
+/* 骨架屏 */
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 2rem;
+}
+.skeleton-card {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+.skeleton-title, .skeleton-meta, .skeleton-line {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+}
+.skeleton-title { height: 24px; width: 70%; }
+.skeleton-meta  { height: 16px; width: 50%; }
+.skeleton-line  { height: 14px; width: 100%; }
+.skeleton-line.short { width: 60%; }
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .retry-btn {

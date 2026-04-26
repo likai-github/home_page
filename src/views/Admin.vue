@@ -51,7 +51,7 @@
       <div class="content-body">
         <!-- 仪表盘 -->
         <div v-if="currentView === 'dashboard'" class="view-container">
-          <DashboardView :stats="dashboardStats" />
+          <DashboardView @navigate="currentView = $event" />
         </div>
 
         <!-- API 管理 -->

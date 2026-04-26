@@ -44,11 +44,15 @@
       </div>
 
       <div class="sidebar-footer">
+        <div v-if="!sidebarCollapsed" class="sidebar-user">
+          <div class="sidebar-user-avatar">{{ authState.username.charAt(0).toUpperCase() }}</div>
+          <span class="sidebar-user-name">{{ authState.username }}</span>
+        </div>
         <button @click="goToHome" class="btn-footer">
           <span class="icon">🏠</span>
           <span v-if="!sidebarCollapsed">返回首页</span>
         </button>
-        <button v-if="isLoggedIn" @click="goToAdmin" class="btn-footer">
+        <button v-if="isLoggedIn && authState.isAdmin" @click="goToAdmin" class="btn-footer">
           <span class="icon">⚙️</span>
           <span v-if="!sidebarCollapsed">管理后台</span>
         </button>
@@ -334,7 +338,10 @@ const sendMessage = async (content) => {
   nextTick(scrollToBottom);
 
   try {
-    const [platformId, modelId] = selectedModel.value.split(':');
+    // selectedModel 格式: "platformId:modelId"，platformId 是纯数字，取第一个冒号前的部分
+    const colonIdx = selectedModel.value.indexOf(':');
+    const platformId = selectedModel.value.substring(0, colonIdx);
+    const modelId = selectedModel.value.substring(colonIdx + 1);
     const platform = availablePlatforms.value.find(p => p.id === parseInt(platformId));
     const model = platform?.models.find(m => m.model_id === modelId);
 
@@ -540,6 +547,31 @@ const goToAdmin = () => router.push('/admin');
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.25rem;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+}
+.sidebar-user-avatar {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 0.75rem; font-weight: 700;
+  flex-shrink: 0;
+}
+.sidebar-user-name {
+  font-size: 0.85rem;
+  color: #cdd6f4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .btn-footer {

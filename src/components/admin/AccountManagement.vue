@@ -121,8 +121,9 @@ const filteredUsers = computed(() => {
   
   const query = searchQuery.value.toLowerCase();
   return users.value.filter(u => 
-    u.name.toLowerCase().includes(query) ||
-    u.email.toLowerCase().includes(query)
+    (u.name || '').toLowerCase().includes(query) ||
+    (u.email || '').toLowerCase().includes(query) ||
+    (u.username || '').toLowerCase().includes(query)
   );
 });
 
@@ -137,7 +138,7 @@ const fetchUsers = async () => {
     const data = await api.getUsers();
     users.value = (data.users || []).map(u => ({
       ...u,
-      name: u.username || u.name,
+      name: u.username || u.name,  // 兼容两种字段名
       isAdmin: u.roles && (u.roles.includes('超级管理员') || u.roles.includes('管理员'))
     }));
   } catch (err) {

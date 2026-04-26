@@ -183,6 +183,11 @@ const handleLogout = () => {
   min-height: 100vh;
 }
 
+/* Chat 页面全屏，不需要顶部 padding */
+.main-content:has(.chat-container) {
+  padding-top: 0;
+}
+
 .footer {
   text-align: center;
   padding: 1.5rem;

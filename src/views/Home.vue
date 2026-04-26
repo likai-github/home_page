@@ -14,7 +14,7 @@
           </p>
           <div class="hero-buttons">
             <button class="btn btn-primary" @click="goToChat">开始对话</button>
-            <button class="btn btn-secondary">查看作品</button>
+            <button class="btn btn-secondary" @click="goToBlog">查看博客</button>
           </div>
         </div>
         <div class="hero-visual">
@@ -93,7 +93,16 @@ const stats = ref([
 ])
 
 const goToChat = () => {
-  router.push('/chat')
+  // 未登录时跳转到登录页，登录后自动跳回 chat
+  if (localStorage.getItem('token')) {
+    router.push('/chat')
+  } else {
+    router.push('/login?redirect=/chat')
+  }
+}
+
+const goToBlog = () => {
+  router.push('/blog')
 }
 </script>
 
