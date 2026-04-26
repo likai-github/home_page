@@ -2,7 +2,14 @@
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const path = url.pathname.replace('/api/platforms/', '').replace(/\/$/, '');
+  
+  // 正确处理路径：移除 /api/platforms 前缀
+  let path = url.pathname;
+  if (path.startsWith('/api/platforms')) {
+    path = path.substring('/api/platforms'.length);
+  }
+  // 移除开头和结尾的斜杠
+  path = path.replace(/^\/+|\/+$/g, '');
 
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -58,7 +65,7 @@ export async function onRequest(context) {
       return handleUpdateModel(platformId, modelId, request, env, corsHeaders);
     }
 
-    return jsonResponse({ error: 'Not Found' }, 404, corsHeaders);
+    return jsonResponse({ error: 'Not Found', path, method: request.method, url: url.pathname }, 404, corsHeaders);
   } catch (error) {
     console.error('Platform API Error:', error);
     return jsonResponse({ error: error.message }, 500, corsHeaders);

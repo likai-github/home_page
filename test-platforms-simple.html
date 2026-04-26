@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>平台管理测试</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .btn-get { background: #3498db; color: white; }
+    .btn-create { background: #27ae60; color: white; }
+    .btn-get:hover { background: #2980b9; }
+    .btn-create:hover { background: #229954; }
+    pre {
+      background: #2c3e50;
+      color: #ecf0f1;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .success { color: #27ae60; font-weight: bold; }
+    .error { color: #e74c3c; font-weight: bold; }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔌 平台管理 API 测试</h1>
+  
+  <div class="card">
+    <h2>快速测试</h2>
+    <button class="btn-get" onclick="testGetPlatforms()">GET /api/platforms</button>
+    <button class="btn-create" onclick="testCreatePlatform()">POST /api/platforms (创建测试平台)</button>
+  </div>
+
+  <div class="card">
+    <h2>创建新平台</h2>
+    <div class="form-group">
+      <label>平台类型</label>
+      <select id="platformType" onchange="updateForm()">
+        <option value="nvidia">NVIDIA</option>
+        <option value="openai">OpenAI</option>
+        <option value="anthropic">Anthropic</option>
+        <option value="custom">自定义</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>显示名称</label>
+      <input type="text" id="displayName" value="NVIDIA API">
+    </div>
+    <div class="form-group">
+      <label>API Key</label>
+      <input type="text" id="apiKey" placeholder="输入你的 API Key">
+    </div>
+    <div class="form-group">
+      <label>Base URL</label>
+      <input type="text" id="baseUrl" value="https://integrate.api.nvidia.com/v1">
+    </div>
+    <div class="form-group">
+      <label>描述</label>
+      <textarea id="description" rows="3">NVIDIA AI 模型平台</textarea>
+    </div>
+    <button class="btn-create" onclick="createPlatform()">创建平台</button>
+  </div>
+
+  <div class="card">
+    <h2>响应结果</h2>
+    <div id="status"></div>
+    <pre id="result">等待测试...</pre>
+  </div>
+
+  <script>
+    const platformDefaults = {
+      nvidia: {
+        display_name: 'NVIDIA API',
+        base_url: 'https://integrate.api.nvidia.com/v1',
+        description: 'NVIDIA AI 模型平台'
+      },
+      openai: {
+        display_name: 'OpenAI API',
+        base_url: 'https://api.openai.com/v1',
+        description: 'OpenAI GPT 模型平台'
+      },
+      anthropic: {
+        display_name: 'Anthropic API',
+        base_url: 'https://api.anthropic.com/v1',
+        description: 'Anthropic Claude 模型平台'
+      },
+      custom: {
+        display_name: '自定义平台',
+        base_url: '',
+        description: '自定义 API 平台'
+      }
+    };
+
+    function updateForm() {
+      const type = document.getElementById('platformType').value;
+      const config = platformDefaults[type];
+      document.getElementById('displayName').value = config.display_name;
+      document.getElementById('baseUrl').value = config.base_url;
+      document.getElementById('description').value = config.description;
+    }
+
+    async function testGetPlatforms() {
+      document.getElementById('status').innerHTML = '⏳ 正在获取平台列表...';
+      document.getElementById('result').textContent = '请求中...';
+      
+      try {
+        const response = await fetch('/api/platforms', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          document.getElementById('status').innerHTML = '<span class="success">✅ 成功！状态码: ' + response.status + '</span>';
+          document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+        } else {
+          document.getElementById('status').innerHTML = '<span class="error">❌ 失败！状态码: ' + response.status + '</span>';
+          document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (error) {
+        document.getElementById('status').innerHTML = '<span class="error">❌ 错误: ' + error.message + '</span>';
+        document.getElementById('result').textContent = error.stack;
+      }
+    }
+
+    async function testCreatePlatform() {
+      document.getElementById('status').innerHTML = '⏳ 正在创建测试平台...';
+      document.getElementById('result').textContent = '请求中...';
+      
+      const testData = {
+        name: 'test_platform',
+        display_name: '测试平台 ' + Date.now(),
+        api_key: 'test_key_' + Date.now(),
+        base_url: 'https://api.test.com',
+        description: '这是一个测试平台'
+      };
+      
+      try {
+        const response = await fetch('/api/platforms', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(testData)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          document.getElementById('status').innerHTML = '<span class="success">✅ 创建成功！状态码: ' + response.status + '</span>';
+          document.getElementById('result').textContent = '发送的数据:\n' + JSON.stringify(testData, null, 2) + '\n\n响应:\n' + JSON.stringify(data, null, 2);
+          
+          // 自动刷新列表
+          setTimeout(() => {
+            document.getElementById('status').innerHTML += '<br>⏳ 正在刷新平台列表...';
+            testGetPlatforms();
+          }, 1000);
+        } else {
+          document.getElementById('status').innerHTML = '<span class="error">❌ 创建失败！状态码: ' + response.status + '</span>';
+          document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (error) {
+        document.getElementById('status').innerHTML = '<span class="error">❌ 错误: ' + error.message + '</span>';
+        document.getElementById('result').textContent = error.stack;
+      }
+    }
+
+    async function createPlatform() {
+      const type = document.getElementById('platformType').value;
+      const apiKey = document.getElementById('apiKey').value;
+      
+      if (!apiKey) {
+        alert('请输入 API Key');
+        return;
+      }
+      
+      document.getElementById('status').innerHTML = '⏳ 正在创建平台...';
+      document.getElementById('result').textContent = '请求中...';
+      
+      const platformData = {
+        name: type,
+        display_name: document.getElementById('displayName').value,
+        api_key: apiKey,
+        base_url: document.getElementById('baseUrl').value,
+        description: document.getElementById('description').value
+      };
+      
+      try {
+        const response = await fetch('/api/platforms', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(platformData)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          document.getElementById('status').innerHTML = '<span class="success">✅ 创建成功！</span>';
+          document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+          
+          // 清空 API Key
+          document.getElementById('apiKey').value = '';
+          
+          // 刷新列表
+          setTimeout(() => testGetPlatforms(), 1000);
+        } else {
+          document.getElementById('status').innerHTML = '<span class="error">❌ 创建失败！</span>';
+          document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (error) {
+        document.getElementById('status').innerHTML = '<span class="error">❌ 错误: ' + error.message + '</span>';
+        document.getElementById('result').textContent = error.stack;
+      }
+    }
+
+    // 页面加载时自动测试 GET
+    window.addEventListener('load', () => {
+      console.log('页面加载完成，自动测试 GET 请求');
+      testGetPlatforms();
+    });
+  </script>
+</body>
+</html>
