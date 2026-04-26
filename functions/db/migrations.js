@@ -6,6 +6,28 @@ export const migrations = [
     version: 1,
     name: 'initial_schema',
     up: async (db) => {
+      // 先删除旧的 users 表（如果存在且结构不兼容）
+      try {
+        // 检查 users 表是否存在
+        const tableInfo = await db.prepare(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+        ).first();
+        
+        if (tableInfo) {
+          // 检查表结构
+          const columns = await db.prepare("PRAGMA table_info(users)").all();
+          const hasUsername = columns.results.some(col => col.name === 'username');
+          
+          if (!hasUsername) {
+            // 旧表结构，需要删除重建
+            console.log('⚠️ 检测到旧的 users 表结构，正在重建...');
+            await db.prepare('DROP TABLE IF EXISTS users').run();
+          }
+        }
+      } catch (error) {
+        console.log('检查 users 表时出错:', error.message);
+      }
+
       // 创建用户表
       await db.prepare(`
         CREATE TABLE IF NOT EXISTS users (
