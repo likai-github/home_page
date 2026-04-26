@@ -80,7 +80,7 @@
         <div class="modal-body">
           <div class="form-group">
             <label>平台类型 *</label>
-            <select v-model="platformForm.name" :disabled="!!editingPlatform">
+            <select v-model="platformForm.name" :disabled="!!editingPlatform" @change="onPlatformTypeChange">
               <option value="">请选择</option>
               <option value="nvidia">NVIDIA</option>
               <option value="openai">OpenAI</option>
@@ -111,7 +111,13 @@
 
           <div class="form-group">
             <label>Base URL</label>
-            <input v-model="platformForm.base_url" type="text" placeholder="例如: https://api.example.com" />
+            <input 
+              v-model="platformForm.base_url" 
+              type="text" 
+              placeholder="例如: https://api.example.com"
+              :readonly="isBaseUrlReadonly"
+            />
+            <small class="hint">{{ baseUrlHint }}</small>
           </div>
 
           <div class="form-group">
@@ -243,6 +249,51 @@ const syncSuccess = ref('');
 const syncError = ref('');
 const modelSearch = ref('');
 
+// 平台默认 URL 配置
+const platformDefaults = {
+  nvidia: {
+    base_url: 'https://integrate.api.nvidia.com/v1',
+    display_name: 'NVIDIA API'
+  },
+  openai: {
+    base_url: 'https://api.openai.com/v1',
+    display_name: 'OpenAI API'
+  },
+  anthropic: {
+    base_url: 'https://api.anthropic.com/v1',
+    display_name: 'Anthropic API'
+  },
+  google: {
+    base_url: 'https://generativelanguage.googleapis.com/v1',
+    display_name: 'Google AI API'
+  },
+  custom: {
+    base_url: '',
+    display_name: '自定义平台'
+  }
+};
+
+const isBaseUrlReadonly = computed(() => {
+  // 编辑模式下可以修改，新建模式下非自定义平台不可修改
+  if (editingPlatform.value) {
+    return false;
+  }
+  return platformForm.value.name && platformForm.value.name !== 'custom';
+});
+
+const baseUrlHint = computed(() => {
+  if (editingPlatform.value) {
+    return '可以修改为自定义 URL';
+  }
+  if (platformForm.value.name === 'custom') {
+    return '请输入自定义 API 的 Base URL';
+  }
+  if (platformForm.value.name && platformForm.value.name !== 'custom') {
+    return '已自动填充默认 URL';
+  }
+  return '选择平台类型后自动填充';
+});
+
 const filteredModels = computed(() => {
   if (!modelSearch.value) return models.value;
   const query = modelSearch.value.toLowerCase();
@@ -286,6 +337,21 @@ const editPlatform = (platform) => {
     description: platform.description || '',
     status: platform.status
   };
+};
+
+const onPlatformTypeChange = () => {
+  const platformType = platformForm.value.name;
+  if (platformType && platformDefaults[platformType]) {
+    const defaults = platformDefaults[platformType];
+    
+    // 自动填充 display_name（如果为空）
+    if (!platformForm.value.display_name) {
+      platformForm.value.display_name = defaults.display_name;
+    }
+    
+    // 自动填充 base_url
+    platformForm.value.base_url = defaults.base_url;
+  }
 };
 
 const closeModal = () => {
@@ -754,6 +820,18 @@ const parseMetadata = (metadata) => {
 .form-group textarea:focus {
   outline: none;
   border-color: #667eea;
+}
+
+.form-group input:read-only {
+  background: #f8f9fa;
+  cursor: not-allowed;
+}
+
+.form-group .hint {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #999;
 }
 
 .input-with-button {
